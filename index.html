@@ -4,28 +4,37 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mahendra's Creation - HVAC Enterprise ERP</title>
+  
+  <!-- Tailwind CSS, FontAwesome, SheetJS, QR Code & Google Fonts -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Google Firebase Realtime Cloud SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     @media print {
       body * { visibility: hidden; }
-      #printableServiceReport, #printableServiceReport *, #printableQrModal, #printableQrModal * { visibility: visible; }
+      #printableServiceReport, #printableServiceReport *,
+      #printableQrModal, #printableQrModal * { visibility: visible; }
       #printableServiceReport, #printableQrModal { position: absolute; left: 0; top: 0; width: 100%; }
     }
+    .sig-canvas { touch-action: none; cursor: crosshair; }
   </style>
 </head>
 <body class="bg-slate-50 font-sans min-h-screen text-slate-800 pb-16">
 
-  <!-- TOAST CONTAINER -->
+  <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toastContainer" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none p-2"></div>
 
-  <!-- ==================== 1. ADMIN PORTAL ==================== -->
+  <!-- ============================================================== -->
+  <!-- 1. ADMIN PORTAL (Link: yoursite/#admin) -->
+  <!-- ============================================================== -->
   <div id="adminPortal" class="hidden">
     <header class="bg-slate-900 text-white p-3.5 sticky top-0 z-40 shadow-xl border-b border-slate-800">
       <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
@@ -79,9 +88,9 @@
           </div>
         </div>
 
-        <!-- Table with Direct Assign & Status -->
+        <!-- Complaints Table with Direct Assign & Status -->
         <div class="bg-white rounded-xl border shadow-sm overflow-x-auto">
-          <table class="w-full text-left text-xs border-collapse min-w-[1000px]">
+          <table class="w-full text-left text-xs border-collapse min-w-[1050px]">
             <thead class="bg-slate-900 text-white uppercase text-[11px]">
               <tr>
                 <th class="p-3">Ticket ID</th>
@@ -150,7 +159,9 @@
     </div>
   </div>
 
-  <!-- ==================== 2. TECHNICIAN PORTAL ==================== -->
+  <!-- ============================================================== -->
+  <!-- 2. TECHNICIAN PORTAL (Link: yoursite/#tech) -->
+  <!-- ============================================================== -->
   <div id="techPortal" class="hidden max-w-lg mx-auto p-4 space-y-4">
     <div class="flex justify-between items-center bg-white p-3 rounded-xl border shadow-sm">
       <h3 class="font-bold text-sm text-slate-800"><i class="fa-solid fa-screwdriver-wrench text-blue-600 mr-1.5"></i> Technician Desk</h3>
@@ -175,7 +186,9 @@
     </div>
   </div>
 
-  <!-- ==================== 3. CUSTOMER PORTAL ==================== -->
+  <!-- ============================================================== -->
+  <!-- 3. CUSTOMER PORTAL (Link: yoursite/#customer) -->
+  <!-- ============================================================== -->
   <div id="custPortal" class="hidden max-w-md mx-auto p-4 space-y-4">
     <!-- Clean Header (No Admin Button) -->
     <div class="bg-white p-4 rounded-2xl border shadow-sm flex justify-between items-center">
@@ -226,6 +239,57 @@
         <button onclick="bookCustComplaint()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs shadow">Submit Complaint (Instant OTP)</button>
       </div>
       <div class="bg-white p-4 rounded-xl border shadow-sm space-y-2"><h3 class="font-bold text-xs border-b pb-1">Service History</h3><div id="custHistoryRows" class="space-y-2 text-xs text-gray-400">No records found.</div></div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- 4. CUSTOMER LIVE FEEDBACK & DIGITAL SIGNATURE PORTAL (#feedback?tkt=MC-XXX) -->
+  <!-- ============================================================== -->
+  <div id="feedbackPortal" class="hidden max-w-md mx-auto p-4 space-y-4">
+    <div class="bg-white p-4 rounded-2xl border shadow-sm text-center">
+      <div class="w-12 h-12 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto text-2xl mb-1 shadow-sm"><i class="fa-solid fa-star"></i></div>
+      <h2 class="font-bold text-base text-slate-900">Service Rating & Digital Signature</h2>
+      <p class="text-xs text-gray-500">Mahendra's Creation Service Feedback</p>
+      <div class="mt-2 p-2 bg-slate-50 border rounded-xl text-xs flex justify-between font-mono">
+        <span id="fbTicketId">#MC-00000</span>
+        <span id="fbCustName" class="font-bold text-slate-800">Customer</span>
+      </div>
+    </div>
+
+    <!-- Rating & Feedback Box -->
+    <div class="bg-white p-5 rounded-2xl border shadow-xl space-y-4">
+      <div>
+        <label class="text-xs font-bold text-slate-700 block text-center mb-1">Rate Technician Service:</label>
+        <div class="flex justify-center items-center gap-2 text-3xl text-amber-400 cursor-pointer py-1" id="starPicker">
+          <i class="fa-solid fa-star" onclick="setFeedbackRating(1)"></i>
+          <i class="fa-solid fa-star" onclick="setFeedbackRating(2)"></i>
+          <i class="fa-solid fa-star" onclick="setFeedbackRating(3)"></i>
+          <i class="fa-solid fa-star" onclick="setFeedbackRating(4)"></i>
+          <i class="fa-solid fa-star" onclick="setFeedbackRating(5)"></i>
+        </div>
+        <span class="text-center block text-xs font-bold text-slate-600 mt-1" id="starRatingLabel">5 / 5 Star (Excellent)</span>
+      </div>
+
+      <div>
+        <label class="text-xs font-bold text-slate-700 block mb-1">Customer Comments / Review:</label>
+        <textarea id="fbCommentInput" rows="2" placeholder="Write feedback about the service..." class="w-full p-2.5 border rounded-xl text-xs outline-none bg-slate-50"></textarea>
+      </div>
+
+      <!-- DIGITAL SIGNATURE PAD -->
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <label class="text-xs font-bold text-slate-800"><i class="fa-solid fa-signature text-blue-600 mr-1"></i> Customer Digital Signature (उँगली से साइन करें):</label>
+          <button type="button" onclick="clearSignaturePad()" class="text-[11px] text-rose-600 font-bold hover:underline">Clear (मिटाएं)</button>
+        </div>
+        <div class="border-2 border-dashed border-slate-300 rounded-xl overflow-hidden bg-white shadow-inner">
+          <canvas id="signaturePad" width="380" height="150" class="w-full h-36 sig-canvas"></canvas>
+        </div>
+        <span class="text-[10px] text-gray-400 block mt-1 text-center">Sign above using finger or stylus.</span>
+      </div>
+
+      <button onclick="submitCustomerFeedbackAndSignature()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-emerald-600/30">
+        Submit Verified Signature & Review
+      </button>
     </div>
   </div>
 
@@ -291,7 +355,7 @@
 
   <!-- Change Customer PIN Modal -->
   <div id="changeCustPinModal" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
+    <div class="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-xs">
       <h3 class="font-bold text-sm border-b pb-2">Change Account PIN</h3>
       <div><label class="font-bold">Current PIN *</label><input type="password" id="custOldPin" class="w-full p-2 border rounded-lg font-bold"></div>
       <div><label class="font-bold">New 4-Digit PIN *</label><input type="password" id="custNewPin" class="w-full p-2 border rounded-lg font-bold"></div>
@@ -332,27 +396,83 @@
     </div>
   </div>
 
-  <!-- PDF Service Report Modal -->
+  <!-- OFFICIAL PDF SERVICE REPORT (WITH PROMINENT WORK DESCRIPTION & DIGITAL SIGNATURE) -->
   <div id="serviceReportModal" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-3">
     <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl text-xs">
       <div class="flex justify-between items-center border-b pb-2"><h3 class="font-bold text-base">AC Service & Health Report</h3><button onclick="closeReportModal()" class="text-gray-400 font-bold text-lg">&times;</button></div>
-      <div id="printableServiceReport" class="p-4 border rounded-xl space-y-3 bg-white">
-        <div class="text-center border-b pb-2"><h2 class="text-base font-extrabold text-blue-700 uppercase">Mahendra's Creation</h2><span class="inline-block mt-1 bg-slate-900 text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold" id="repCallType">Report</span></div>
-        <div class="grid grid-cols-2 gap-2 border-b pb-2">
-          <div><p><b>Ticket ID:</b> <span id="repTicketId" class="font-mono text-blue-700 font-bold"></span></p><p><b>Date:</b> <span id="repDate"></span></p><p><b>Customer:</b> <span id="repCustName"></span></p><p><b>Phone:</b> <span id="repCustPhone"></span></p></div>
-          <div><p><b>Technician:</b> <span id="repTechName"></span></p><p><b>Address:</b> <span id="repAddress"></span></p><p><b>Fault:</b> <span id="repFault" class="text-rose-600 font-bold"></span></p><p><b>Product ID:</b> <span id="repProdId" class="font-mono text-emerald-700 font-bold"></span></p></div>
+      
+      <div id="printableServiceReport" class="p-4 border border-slate-300 rounded-xl space-y-3.5 bg-white">
+        <div class="text-center border-b pb-2.5">
+          <h2 class="text-base font-extrabold text-blue-700 uppercase tracking-wide">Mahendra's Creation</h2>
+          <p class="text-[10px] text-gray-500">HVAC Field Services, Repairs & Maintenance Contract</p>
+          <span class="inline-block mt-1 bg-slate-900 text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold" id="repCallType">Report</span>
         </div>
-        <div id="repSparesSection" class="hidden"><h4 class="font-bold mb-1">Spare Parts Used:</h4><div id="repSparesList" class="border rounded p-2 bg-slate-50 space-y-1"></div></div>
+        
+        <div class="grid grid-cols-2 gap-2 border-b pb-2 text-[11px]">
+          <div>
+            <p><b>Ticket ID:</b> <span id="repTicketId" class="font-mono text-blue-700 font-bold"></span></p>
+            <p><b>Date:</b> <span id="repDate"></span></p>
+            <p><b>Customer:</b> <span id="repCustName" class="font-bold"></span></p>
+            <p><b>Phone:</b> <span id="repCustPhone"></span></p>
+          </div>
+          <div>
+            <p><b>Technician:</b> <span id="repTechName" class="font-bold"></span></p>
+            <p><b>Address:</b> <span id="repAddress"></span></p>
+            <p><b>Fault:</b> <span id="repFault" class="text-rose-600 font-bold"></span></p>
+            <p><b>Product ID:</b> <span id="repProdId" class="font-mono text-emerald-700 font-bold"></span></p>
+          </div>
+        </div>
+
+        <!-- Spare Parts List in Report -->
+        <div id="repSparesSection" class="hidden">
+          <h4 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-wrench text-blue-600 mr-1"></i> Spare Parts Utilized:</h4>
+          <div id="repSparesList" class="border rounded-lg p-2 bg-slate-50 space-y-1"></div>
+        </div>
+
+        <!-- AC Digital Health Report -->
         <div>
-          <h4 class="font-bold mb-1">AC Digital Health Report:</h4>
-          <table class="w-full border-collapse border text-[11px]"><tr class="bg-slate-50"><td class="border p-1">Before Temp</td><td class="border p-1 font-bold" id="repTempBefore">-</td></tr><tr><td class="border p-1">After Temp</td><td class="border p-1 font-bold text-emerald-700" id="repTempAfter">-</td></tr><tr class="bg-slate-50"><td class="border p-1">Gas PSI</td><td class="border p-1 font-bold" id="repGasPsi">-</td></tr><tr><td class="border p-1">Amps</td><td class="border p-1 font-bold" id="repAmps">-</td></tr></table>
+          <h4 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-notes-medical text-rose-500 mr-1"></i> AC Digital Health Report Card:</h4>
+          <table class="w-full border-collapse border text-[11px]">
+            <tr class="bg-slate-50"><td class="border p-1.5 font-semibold">Grill Temp (Before Service)</td><td class="border p-1.5 font-bold" id="repTempBefore">-</td></tr>
+            <tr><td class="border p-1.5 font-semibold">Grill Temp (After Service)</td><td class="border p-1.5 font-bold text-emerald-700" id="repTempAfter">-</td></tr>
+            <tr class="bg-slate-50"><td class="border p-1.5 font-semibold">Gas Suction Pressure (PSI)</td><td class="border p-1.5 font-bold" id="repGasPsi">-</td></tr>
+            <tr><td class="border p-1.5 font-semibold">Operating Current (Running Amps)</td><td class="border p-1.5 font-bold" id="repAmps">-</td></tr>
+          </table>
         </div>
+
+        <!-- PROMINENT WORK DESCRIPTION -->
+        <div class="bg-slate-50 border border-slate-300 p-2.5 rounded-lg space-y-1">
+          <b class="text-slate-900 block text-[11px]"><i class="fa-solid fa-file-lines text-blue-600 mr-1"></i> Technician Work Description & Service Notes:</b>
+          <p id="repRemarksText" class="text-slate-700 italic text-xs leading-relaxed">Regular service and maintenance conducted successfully.</p>
+        </div>
+
+        <!-- CUSTOMER REVIEW & VERIFIED DIGITAL SIGNATURE -->
+        <div class="border border-slate-300 rounded-lg p-2.5 bg-amber-50/50 space-y-2">
+          <div class="flex justify-between items-center border-b border-amber-200 pb-1">
+            <b class="text-slate-800 text-[11px]"><i class="fa-solid fa-star text-amber-500 mr-1"></i> Customer Verified Rating & Feedback:</b>
+            <span id="repFeedbackRatingDisp" class="text-amber-500 font-bold">★★★★★ (5/5)</span>
+          </div>
+          <p id="repFeedbackCommentDisp" class="text-[11px] text-slate-700 italic">"Service satisfactory."</p>
+          
+          <div class="pt-2 border-t border-amber-200 flex justify-between items-end">
+            <div>
+              <span class="text-[10px] text-gray-500 block">Customer Digital Signature:</span>
+              <div id="repSignatureBox" class="mt-0.5">
+                <img id="repSignatureImg" src="" class="h-12 w-auto border bg-white rounded p-0.5 object-contain">
+              </div>
+            </div>
+            <div class="text-right text-[10px] text-emerald-700 font-bold">
+              <i class="fa-solid fa-circle-check"></i> Digitally Signed & Approved
+            </div>
+          </div>
+        </div>
+
         <div class="bg-emerald-50 border border-emerald-300 p-2.5 rounded-lg flex justify-between items-center">
           <div><span class="text-[10px] text-emerald-800 font-bold block">Final Bill Payable:</span><span class="text-base font-extrabold text-emerald-900" id="repFinalBill">₹0</span></div>
           <div class="text-right text-[10px] text-emerald-800"><b>🛡️ 30 Days Warranty</b><br><span class="font-bold text-emerald-700">Verified & Completed</span></div>
         </div>
       </div>
-      <div class="flex gap-2"><button onclick="window.print()" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl text-xs"><i class="fa-solid fa-print mr-1"></i> Print / PDF</button><button onclick="closeReportModal()" class="px-4 bg-gray-200 rounded-xl text-xs font-bold">Close</button></div>
+      <div class="flex gap-2"><button onclick="window.print()" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl text-xs"><i class="fa-solid fa-print mr-1"></i> Print / PDF Report</button><button onclick="closeReportModal()" class="px-4 bg-gray-200 rounded-xl text-xs font-bold">Close</button></div>
     </div>
   </div>
 
@@ -379,7 +499,7 @@
     </div>
   </div>
 
-  <!-- ==================== JAVASCRIPT ==================== -->
+  <!-- ==================== JAVASCRIPT ENGINE ==================== -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBc73pqmsAMy6QUA5Q5oVooG-YH4HDi3lo",
@@ -394,12 +514,15 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // App State (Spare parts starts completely empty without any inbuilt dummies)
     let appDb = { technicians: [], spareParts: [], customers: {}, tickets: [], amcProducts: [], adminPin: "1234" };
     let activeTechUser = JSON.parse(localStorage.getItem('mc_logged_tech_user_cloud')) || null;
     let activeCustomerPhone = localStorage.getItem('mc_logged_cust_phone_cloud') || null;
     let isAdminAuthenticated = (sessionStorage.getItem('mc_admin_auth') === 'true');
     let currentLang = localStorage.getItem('mc_app_lang') || 'en';
     let tempCustResetOtp = null, tempCustResetPhone = null;
+    let customerGivenRating = 5;
+    let activeFeedbackTicketId = null;
 
     function normalizePhone(p) { return p ? String(p).replace(/\D/g, '').slice(-10) : ""; }
     function normalizeCode(c) { return c ? String(c).trim().toUpperCase() : ""; }
@@ -427,6 +550,7 @@
       setTimeout(() => { if (toast.parentElement) toast.remove(); }, 4000);
     }
 
+    // FIREBASE REALTIME SYNC (No Inbuilt Dummy Spares)
     function startFirebaseRealtimeSync() {
       db.ref('settings/adminPin').on('value', snap => { appDb.adminPin = snap.val() ? String(snap.val()) : "1234"; });
       db.ref('tickets').on('value', snap => {
@@ -440,20 +564,14 @@
       });
       db.ref('technicians').on('value', snap => {
         const val = snap.val();
-        appDb.technicians = val ? Object.values(val) : [
-          { code: "T-101", name: "Rohit Sharma", pin: "1234", phone: "9876543210", joinDate: "2024-01-10", address: "Jaipur" },
-          { code: "T-102", name: "Amit Verma", pin: "1234", phone: "9876543211", joinDate: "2024-02-15", address: "Jaipur" }
-        ];
+        appDb.technicians = val ? Object.values(val) : [];
         renderTechMasterTable();
         populateTechDropdowns();
       });
+      // Spares Master: Only reads what user/admin creates. No inbuilt fallback!
       db.ref('spareParts').on('value', snap => {
         const val = snap.val();
-        appDb.spareParts = val ? Object.values(val) : [
-          { id: "SP-1", name: "Jet Pump Service", price: 499, tax: 18 },
-          { id: "SP-2", name: "Gas Charging (R32)", price: 2200, tax: 18 },
-          { id: "SP-3", name: "Capacitor 45mfd", price: 450, tax: 18 }
-        ];
+        appDb.spareParts = val ? Object.values(val) : [];
         renderAdminSparesTable();
       });
       db.ref('amcProducts').on('value', snap => {
@@ -490,7 +608,11 @@
       document.getElementById('adminPortal').classList.add('hidden');
       document.getElementById('techPortal').classList.add('hidden');
       document.getElementById('custPortal').classList.add('hidden');
-      if (hash.startsWith('#admin')) {
+      document.getElementById('feedbackPortal').classList.add('hidden');
+
+      if (hash.startsWith('#feedback')) {
+        handleFeedbackRoute();
+      } else if (hash.startsWith('#admin')) {
         if (isAdminAuthenticated) { document.getElementById('adminPortal').classList.remove('hidden'); switchAdminTab('complaintsTab'); }
         else openAdminLoginModal();
       } else if (hash.startsWith('#tech')) {
@@ -528,7 +650,7 @@
       renderAllViews();
     }
 
-    // --- ADMIN ACTIONS ---
+    // --- ADMIN CONTROLS ---
     function openAdminLoginModal() { document.getElementById('adminPinInput').value = ''; document.getElementById('adminLoginModal').classList.remove('hidden'); }
     function closeAdminLoginModal() { document.getElementById('adminLoginModal').classList.add('hidden'); if (!isAdminAuthenticated) window.location.hash = "#customer"; }
     function submitAdminLogin() {
@@ -596,13 +718,11 @@
             <td class="p-3"><b>${tkt.name}</b><div class="text-[11px] font-mono text-gray-500">${tkt.phone}</div><div class="text-[10px] text-gray-400 truncate max-w-[120px]">${tkt.address}</div></td>
             <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${tkt.callType?.includes('AMC')||tkt.callType?.includes('CMC')?'bg-emerald-100 text-emerald-800':'bg-blue-100 text-blue-800'}">${tkt.callType}</span><div class="text-rose-600 text-[11px] truncate max-w-[120px]">${tkt.fault}</div></td>
             <td class="p-3 font-mono font-bold text-emerald-700">${tkt.productId ? `<span class="bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 text-[10px]">${tkt.productId}</span>` : '-'}</td>
-            <!-- DIRECT ASSIGN TECH DROPDOWN -->
             <td class="p-3">
               <select onchange="directAssignTech('${tkt.id}', this.value)" class="p-1 border rounded text-xs font-bold bg-white text-slate-800 shadow-sm outline-none">
                 ${techOpts}
               </select>
             </td>
-            <!-- DIRECT STATUS DROPDOWN -->
             <td class="p-3">
               <select onchange="directChangeStatus('${tkt.id}', this.value)" class="p-1 border rounded text-xs font-bold outline-none shadow-sm ${tkt.status==='Completed'?'bg-emerald-50 text-emerald-700 border-emerald-300':(tkt.status==='In-Progress'?'bg-amber-50 text-amber-700 border-amber-300':(tkt.status==='Assigned'?'bg-blue-50 text-blue-700 border-blue-300':(tkt.status==='Cancelled'?'bg-rose-50 text-rose-700 border-rose-300':'bg-white')))}">
                 <option value="Open" ${tkt.status==='Open'?'selected':''}>Open</option>
@@ -614,7 +734,6 @@
             </td>
             <td class="p-3"><div class="text-[10px]">Start: <b>${tkt.startOtp}</b> | Close: <b>${tkt.closeOtp}</b></div><button onclick="adminSendOtpWhatsApp('${tkt.id}')" class="mt-0.5 bg-emerald-600 text-white px-2 py-0.5 rounded text-[9px] font-bold"><i class="fa-brands fa-whatsapp"></i> OTP</button></td>
             <td class="p-3 font-bold">₹${tkt.bill || 0}</td>
-            <!-- ACTIONS (EDIT, CANCEL, DELETE, PDF) -->
             <td class="p-3 text-center">
               <div class="flex items-center justify-center gap-1">
                 <button onclick="openAdminEditModal('${tkt.id}')" title="Edit" class="p-1.5 rounded bg-blue-50 text-blue-700 border border-blue-200"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -675,7 +794,7 @@
       window.open(`https://wa.me/91${normalizePhone(t.phone)}?text=${m}`, '_blank');
     }
 
-    // --- TECHNICIAN FLOW & MULTI-PARTS ---
+    // --- TECHNICIAN FLOW & MULTI-SPARES ---
     function checkAutoTechLogin() {
       if (activeTechUser) {
         document.getElementById('techLoginBox').classList.add('hidden');
@@ -710,6 +829,9 @@
         let subtotal = partsSum + laborFee;
         let taxVal = Math.round(subtotal * 0.18);
         let grandTotal = isAmc ? 0 : (subtotal + taxVal);
+
+        const baseClean = window.location.href.split('#')[0].split('?')[0];
+        const feedbackLink = `${baseClean}#feedback?tkt=${job.id}`;
 
         container.innerHTML += `
           <div class="bg-white p-4 rounded-xl border shadow-sm space-y-3 text-xs">
@@ -754,7 +876,8 @@
                   <label class="font-bold block">Photos (Multiple):</label>
                   <input type="file" multiple accept="image/*" onchange="uploadMultiplePhotos('${job.id}', this)" class="w-full text-xs">
                   <div class="flex flex-wrap gap-1 mt-1">${(job.photos || []).map((img, idx) => `<div class="relative w-12 h-12 border rounded overflow-hidden"><img src="${img}" class="w-full h-full object-cover"><button onclick="removeJobPhoto('${job.id}', ${idx})" class="absolute top-0 right-0 bg-red-600 text-white w-3 h-3 flex items-center justify-center text-[9px] font-bold">&times;</button></div>`).join('')}</div>
-                  <textarea id="techRemarks_${job.id}" rows="2" placeholder="Work Remarks..." class="w-full p-1.5 border rounded mt-1 bg-white">${job.techRemarks || ''}</textarea>
+                  <label class="font-bold block mt-1.5">Work Description (कार्य विवरण) *:</label>
+                  <textarea id="techRemarks_${job.id}" rows="2" placeholder="Describe work done (eg. Gas charged, capacitor replaced)..." class="w-full p-2 border rounded-lg bg-white">${job.techRemarks || ''}</textarea>
                 </div>
 
                 <!-- Health Report -->
@@ -783,16 +906,50 @@
               </div>
             ` : ''}
 
-            ${job.status === 'Completed' ? `<div class="p-2.5 bg-green-50 border rounded-xl flex justify-between items-center"><b class="text-emerald-800">Job Done (₹${job.bill})</b><button onclick="openServiceReportModal('${job.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold">View PDF</button></div>` : ''}
+            ${job.status === 'Completed' ? `
+              <div class="p-3 bg-emerald-50 border border-emerald-300 rounded-xl space-y-3">
+                <div class="flex justify-between items-center"><b class="text-emerald-900 font-bold">✅ Job Completed (Bill: ₹${job.bill})</b><span class="text-xs text-emerald-700 font-bold">Verified</span></div>
+                
+                <!-- CUSTOMER FEEDBACK & SIGNATURE QR BOX -->
+                <div class="p-3 bg-white border border-emerald-200 rounded-xl space-y-2 text-center shadow-sm">
+                  <b class="text-xs text-slate-800 block"><i class="fa-solid fa-qrcode text-blue-600 mr-1"></i> Customer Feedback & Signature QR:</b>
+                  <p class="text-[10px] text-gray-500">ग्राहक से यह QR स्कैन करवाएं ताकि वो डिजिटल साइन व रेटिंग दे सकें:</p>
+                  <div id="techJobFeedbackQr_${job.id}" class="flex justify-center p-1.5 bg-white rounded"></div>
+                  <button onclick="shareFeedbackWhatsApp('${job.id}', '${job.phone}')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 rounded-lg text-[11px] shadow flex items-center justify-center gap-1.5">
+                    <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp पर फीडबैक लिंक भेजें
+                  </button>
+                </div>
+
+                <button onclick="openServiceReportModal('${job.id}')" class="w-full bg-blue-600 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow">
+                  <i class="fa-solid fa-file-pdf"></i> View & Print Final Report (With Sign)
+                </button>
+              </div>
+            ` : ''}
           </div>
         `;
+
+        if (job.status === 'Completed') {
+          setTimeout(() => {
+            const qrBox = document.getElementById(`techJobFeedbackQr_${job.id}`);
+            if (qrBox && qrBox.innerHTML === '') {
+              new QRCode(qrBox, { text: feedbackLink, width: 110, height: 110 });
+            }
+          }, 300);
+        }
       });
+    }
+
+    function shareFeedbackWhatsApp(tId, phone) {
+      const baseClean = window.location.href.split('#')[0].split('?')[0];
+      const link = `${baseClean}#feedback?tkt=${tId}`;
+      const msg = encodeURIComponent(`Hello! Please rate your service experience with Mahendra's Creation and provide your digital signature here:\n${link}`);
+      window.open(`https://wa.me/91${normalizePhone(phone)}?text=${msg}`, '_blank');
     }
 
     function addPredefinedSpare(jId) {
       const sId = document.getElementById(`techSelectSpare_${jId}`).value;
       const q = parseInt(document.getElementById(`techQty_${jId}`).value) || 1;
-      if (!sId) return alert("Select a part!");
+      if (!sId) return alert("Select a part from list!");
       const sp = appDb.spareParts.find(s => s.id === sId); if (!sp) return;
       const t = appDb.tickets.find(x => x.id === jId);
       let list = Array.isArray(t.sparesUsed) ? t.sparesUsed : Object.values(t.sparesUsed||{});
@@ -862,6 +1019,7 @@
         r.readAsDataURL(file);
       });
     }
+
     function removeJobPhoto(jId, idx) {
       const t = appDb.tickets.find(x => x.id === jId);
       let photos = Array.isArray(t.photos) ? t.photos : [];
@@ -885,7 +1043,7 @@
         gasPsi: document.getElementById(`hr_psi_${tId}`)?.value || '65',
         amps: document.getElementById(`hr_amps_${tId}`)?.value || '6.5'
       };
-      const rem = document.getElementById(`techRemarks_${tId}`)?.value.trim() || '';
+      const rem = document.getElementById(`techRemarks_${tId}`)?.value.trim() || 'AC service performed successfully.';
       let bill = 0, labor = 0, tax = 0;
       if (!isAmc) {
         labor = parseFloat(document.getElementById(`techLaborFee_${tId}`)?.value) || 0;
@@ -895,7 +1053,104 @@
       db.ref('tickets/' + tId).update({ status: 'Completed', bill, baseBill: labor, taxAmount: tax, techRemarks: rem, healthReport: hr });
     }
 
-    // --- CUSTOMER PORTAL & AUTH ---
+    // --- 4. CUSTOMER LIVE FEEDBACK & SIGNATURE ENGINE (#feedback) ---
+    function handleFeedbackRoute() {
+      const hashStr = window.location.hash;
+      const params = new URLSearchParams(hashStr.split('?')[1] || window.location.search);
+      const tktId = params.get('tkt');
+
+      if (!tktId) {
+        alert("Invalid Feedback Link!");
+        window.location.hash = "#customer";
+        return;
+      }
+
+      activeFeedbackTicketId = tktId;
+      document.getElementById('feedbackPortal').classList.remove('hidden');
+
+      db.ref('tickets/' + tktId).once('value', snap => {
+        const t = snap.val();
+        if (t) {
+          document.getElementById('fbTicketId').innerText = `#${t.id}`;
+          document.getElementById('fbCustName').innerText = t.name;
+        }
+      });
+
+      setupSignaturePad();
+    }
+
+    function setFeedbackRating(stars) {
+      customerGivenRating = stars;
+      const starIcons = document.getElementById('starPicker').querySelectorAll('i');
+      starIcons.forEach((icon, idx) => {
+        icon.className = (idx < stars) ? "fa-solid fa-star" : "fa-regular fa-star text-slate-300";
+      });
+      const labels = ["", "1 / 5 Star (Poor)", "2 / 5 Star (Fair)", "3 / 5 Star (Good)", "4 / 5 Star (Very Good)", "5 / 5 Star (Excellent)"];
+      document.getElementById('starRatingLabel').innerText = labels[stars] || `${stars}/5 Star`;
+    }
+
+    let isDrawing = false;
+    function setupSignaturePad() {
+      const canvas = document.getElementById('signaturePad');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+          x: (clientX - rect.left) * (canvas.width / rect.width),
+          y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
+      }
+
+      function start(e) { e.preventDefault(); isDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }
+      function draw(e) { if (!isDrawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+      function stop(e) { if (isDrawing) { isDrawing = false; ctx.closePath(); } }
+
+      canvas.addEventListener('mousedown', start);
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('mouseup', stop);
+      canvas.addEventListener('touchstart', start, { passive: false });
+      canvas.addEventListener('touchmove', draw, { passive: false });
+      canvas.addEventListener('touchend', stop);
+    }
+
+    function clearSignaturePad() {
+      const canvas = document.getElementById('signaturePad');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function submitCustomerFeedbackAndSignature() {
+      if (!activeFeedbackTicketId) return alert("Ticket ID not found!");
+      const comment = document.getElementById('fbCommentInput').value.trim() || 'Service satisfactory.';
+      const canvas = document.getElementById('signaturePad');
+      const sigData = canvas.toDataURL('image/png');
+
+      const feedbackData = {
+        rating: customerGivenRating,
+        comment: comment,
+        signedAt: new Date().toLocaleDateString('en-IN') + ' ' + new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      };
+
+      db.ref(`tickets/${activeFeedbackTicketId}`).update({
+        feedback: feedbackData,
+        signature: sigData
+      }).then(() => {
+        alert("✅ धन्यवाद! आपका फीडबैक और डिजिटल हस्ताक्षर सफलतापूर्वक दर्ज हो गए हैं।");
+        window.location.hash = "#customer";
+      });
+    }
+
+    // --- CUSTOMER PORTAL ---
     function checkAutoCustomerLogin() {
       if (activeCustomerPhone) {
         document.getElementById('custLoginSection').classList.add('hidden');
@@ -966,7 +1221,7 @@
         id: tId, timestamp: Date.now(), date: new Date().toLocaleDateString('en-IN'),
         name, phone: activeCustomerPhone, address: addr, fault, callType, productId: pId,
         techCode: "Unassigned", status: "Open", startOtp: sOtp, closeOtp: cOtp, bill: 0,
-        photos: [], sparesUsed: [], healthReport: null
+        photos: [], sparesUsed: [], healthReport: null, techRemarks: "", feedback: null, signature: null
       };
       db.ref('tickets/' + tId).set(newTkt);
       document.getElementById('custFault').value = '';
@@ -1081,22 +1336,52 @@
     }
     function closeQrModal() { document.getElementById('printableQrModal').classList.add('hidden'); }
 
+    // --- OFFICIAL PDF REPORT WITH WORK DESCRIPTION & DIGITAL SIGNATURE ---
     function openServiceReportModal(tId) {
-      const t = appDb.tickets.find(x => x.id === tId); if (!t) return;
+      const t = appDb.tickets.find(x => x.id === tId); if (!t) return alert("Ticket not found!");
       document.getElementById('repTicketId').innerText = t.id; document.getElementById('repDate').innerText = t.date;
       document.getElementById('repCustName').innerText = t.name; document.getElementById('repCustPhone').innerText = t.phone;
       document.getElementById('repAddress').innerText = t.address; document.getElementById('repFault').innerText = t.fault;
-      document.getElementById('repCallType').innerText = t.callType; document.getElementById('repTechName').innerText = t.techCode;
+      document.getElementById('repCallType').innerText = `${t.callType} Report`; document.getElementById('repTechName').innerText = t.techCode || 'Unassigned';
       document.getElementById('repProdId').innerText = t.productId || '-'; document.getElementById('repFinalBill').innerText = `₹${t.bill}`;
+
+      // Spares List
       const spSec = document.getElementById('repSparesSection'), spList = document.getElementById('repSparesList');
       if (t.sparesUsed && t.sparesUsed.length) {
         spSec.classList.remove('hidden');
         spList.innerHTML = t.sparesUsed.map(s => `<div class="flex justify-between"><span>• ${s.name} (Qty: ${s.qty})</span><b>₹${(s.price * s.qty)}</b></div>`).join('');
       } else spSec.classList.add('hidden');
+
+      // Health Report
       if (t.healthReport) {
         document.getElementById('repTempBefore').innerText = `${t.healthReport.tempBefore}°C`; document.getElementById('repTempAfter').innerText = `${t.healthReport.tempAfter}°C`;
         document.getElementById('repGasPsi').innerText = `${t.healthReport.gasPsi} PSI`; document.getElementById('repAmps').innerText = `${t.healthReport.amps} A`;
       }
+
+      // WORK DESCRIPTION (PROMINENTLY DISPLAYED)
+      const descText = t.techRemarks && t.techRemarks.trim() ? t.techRemarks : "Standard jet service, comprehensive health check, and system optimization completed.";
+      document.getElementById('repRemarksText').innerText = descText;
+
+      // CUSTOMER FEEDBACK & VERIFIED DIGITAL SIGNATURE DISPLAY
+      const ratingDisp = document.getElementById('repFeedbackRatingDisp');
+      const commentDisp = document.getElementById('repFeedbackCommentDisp');
+      const sigImg = document.getElementById('repSignatureImg');
+
+      if (t.feedback) {
+        ratingDisp.innerText = `★★★★★`.slice(0, t.feedback.rating) + `☆☆☆☆☆`.slice(t.feedback.rating) + ` (${t.feedback.rating}/5)`;
+        commentDisp.innerText = `"${t.feedback.comment}" — Signed on: ${t.feedback.signedAt || 'Verified'}`;
+      } else {
+        ratingDisp.innerText = "Pending Customer Review";
+        commentDisp.innerText = "Awaiting feedback via QR Code.";
+      }
+
+      if (t.signature) {
+        sigImg.src = t.signature;
+        sigImg.classList.remove('hidden');
+      } else {
+        sigImg.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40'%3E%3Ctext x='10' y='25' fill='%2394a3b8' font-size='12' font-family='sans-serif'%3ESignature Pending%3C/text%3E%3C/svg%3E";
+      }
+
       document.getElementById('serviceReportModal').classList.remove('hidden');
     }
     function closeReportModal() { document.getElementById('serviceReportModal').classList.add('hidden'); }
@@ -1114,14 +1399,18 @@
         fault: document.getElementById('dirCustFault').value.trim(), callType: document.getElementById('dirCallTypeSelect').value,
         techCode: tc, status: (tc==='Unassigned'?'Open':'Assigned'),
         startOtp: Math.floor(1000 + Math.random() * 9000).toString(), closeOtp: Math.floor(1000 + Math.random() * 9000).toString(),
-        bill: 0, photos: [], sparesUsed: [], healthReport: null
+        bill: 0, photos: [], sparesUsed: [], healthReport: null, techRemarks: "", feedback: null, signature: null
       });
       closeAdminDirectModal();
     }
 
     function exportFilteredExcel() {
       if (appDb.tickets.length === 0) return alert("No records!");
-      const data = appDb.tickets.map(t => ({ "Ticket ID": t.id, "Date": t.date, "Customer": t.name, "Phone": t.phone, "Address": t.address, "Type": t.callType, "Product ID": t.productId||'N/A', "Fault": t.fault, "Tech": t.techCode, "Status": t.status, "Bill": t.bill }));
+      const data = appDb.tickets.map(t => ({
+        "Ticket ID": t.id, "Date": t.date, "Customer": t.name, "Phone": t.phone, "Address": t.address,
+        "Type": t.callType, "Product ID": t.productId||'N/A', "Fault": t.fault, "Tech": t.techCode,
+        "Status": t.status, "Bill": t.bill, "Feedback": t.feedback ? `${t.feedback.rating}/5 - ${t.feedback.comment}` : 'Pending'
+      }));
       const ws = XLSX.utils.json_to_sheet(data), wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Audits");
       XLSX.writeFile(wb, "HVAC_Clients_Report.xlsx");
@@ -1129,3 +1418,4 @@
   </script>
 </body>
 </html>
+```
