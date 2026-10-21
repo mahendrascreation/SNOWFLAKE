@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mahendra's Creation - HVAC Enterprise ERP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    @media print {
+      body * { visibility: hidden; }
+      #printableServiceReport, #printableServiceReport *, #printableQrModal, #printableQrModal * { visibility: visible; }
+      #printableServiceReport, #printableQrModal { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 font-sans min-h-screen text-slate-800 pb-16">
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none p-2"></div>
+
+  <!-- ==================== 1. ADMIN PORTAL ==================== -->
+  <div id="adminPortal" class="hidden">
+    <header class="bg-slate-900 text-white p-3.5 sticky top-0 z-40 shadow-xl border-b border-slate-800">
+      <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-xl bg-cyan-500 flex items-center justify-center text-white font-bold"><i class="fa-solid fa-shield-halved"></i></div>
+          <div>
+            <h1 class="font-bold text-sm text-cyan-300">Mahendra's Creation [ADMIN TOWER]</h1>
+            <span class="text-[10px] text-emerald-400 font-mono">● Cloud Realtime Active</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openChangeAdminPinModal()" class="bg-slate-800 text-amber-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-bold"><i class="fa-solid fa-key mr-1"></i> Admin PIN</button>
+          <button onclick="toggleGlobalLanguage()" class="bg-slate-800 text-cyan-300 border border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-bold"><i class="fa-solid fa-globe mr-1"></i> <span id="currentLangLabel">हिंदी</span></button>
+          <button onclick="logoutAdmin()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold"><i class="fa-solid fa-right-from-bracket mr-1"></i> Logout</button>
+        </div>
+      </div>
+      <div class="max-w-7xl mx-auto mt-3 flex flex-wrap gap-2 border-t border-slate-800 pt-2 text-xs">
+        <button onclick="switchAdminTab('complaintsTab')" id="btnTabComplaints" class="px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-bold">📋 Complaints & Audit</button>
+        <button onclick="switchAdminTab('techMasterTab')" id="btnTabTech" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 font-bold">👨‍🔧 Technicians Master</button>
+        <button onclick="switchAdminTab('sparesMasterTab')" id="btnTabSpares" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 font-bold">📦 Spares Master</button>
+        <button onclick="switchAdminTab('amcMasterTab')" id="btnTabAmc" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 font-bold">📑 AMC QR Master</button>
+      </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto p-4 space-y-4">
+      <!-- TAB 1: COMPLAINTS -->
+      <div id="adminTab_complaints" class="space-y-4">
+        <!-- KPI CARDS -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="bg-white p-3.5 rounded-xl border shadow-sm"><span class="text-[11px] text-gray-500 block">Total Calls</span><b class="text-xl text-slate-900" id="kpiTotalTickets">0</b></div>
+          <div class="bg-white p-3.5 rounded-xl border shadow-sm"><span class="text-[11px] text-gray-500 block">Active Calls</span><b class="text-xl text-amber-600" id="kpiActiveTickets">0</b></div>
+          <div class="bg-white p-3.5 rounded-xl border shadow-sm"><span class="text-[11px] text-gray-500 block">Completed</span><b class="text-xl text-emerald-600" id="kpiCompletedTickets">0</b></div>
+          <div class="bg-white p-3.5 rounded-xl border shadow-sm"><span class="text-[11px] text-gray-500 block">Revenue</span><b class="text-xl text-slate-900" id="kpiTotalRevenue">₹0</b></div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="bg-white p-3.5 rounded-xl border shadow-sm flex flex-wrap justify-between items-center gap-2">
+          <div class="flex flex-wrap gap-2 flex-1">
+            <input type="text" id="filterSearchQuery" onkeyup="applyAdminFilters()" placeholder="Search Name/Phone/ID..." class="p-2 border rounded-lg text-xs outline-none w-48">
+            <select id="filterCallType" onchange="applyAdminFilters()" class="p-2 border rounded-lg text-xs font-bold bg-white">
+              <option value="ALL">All Calls</option><option value="Breakdown">Breakdown</option><option value="Normal Service">Normal Service</option><option value="AMC Service">AMC Service</option><option value="CMC Service">CMC Service</option>
+            </select>
+            <select id="filterStatus" onchange="applyAdminFilters()" class="p-2 border rounded-lg text-xs font-bold bg-white">
+              <option value="ALL">All Status</option><option value="Open">Open</option><option value="Assigned">Assigned</option><option value="In-Progress">In-Progress</option><option value="Completed">Completed</option><option value="Cancelled">Cancelled</option>
+            </select>
+            <select id="filterTech" onchange="applyAdminFilters()" class="p-2 border rounded-lg text-xs font-bold bg-white"><option value="ALL">All Techs</option></select>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="openAdminBookingModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-lg text-xs">+ Book Direct</button>
+            <button onclick="exportFilteredExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg text-xs"><i class="fa-solid fa-file-excel mr-1"></i> Excel</button>
+          </div>
+        </div>
+
+        <!-- Table with Direct Assign & Status -->
+        <div class="bg-white rounded-xl border shadow-sm overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse min-w-[1000px]">
+            <thead class="bg-slate-900 text-white uppercase text-[11px]">
+              <tr>
+                <th class="p-3">Ticket ID</th>
+                <th class="p-3">Customer</th>
+                <th class="p-3">Fault & Type</th>
+                <th class="p-3">Product ID</th>
+                <th class="p-3">Assign Tech (Direct)</th>
+                <th class="p-3">Status (Direct)</th>
+                <th class="p-3">OTPs</th>
+                <th class="p-3">Bill (₹)</th>
+                <th class="p-3 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminTableRows" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2: TECH MASTER -->
+      <div id="adminTab_techMaster" class="hidden bg-white p-4 rounded-xl border shadow-sm space-y-3">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="font-bold text-sm">Technicians Master</h3>
+          <button onclick="toggleTechAddForm()" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">+ Add Technician</button>
+        </div>
+        <div id="techAddFormBox" class="hidden p-3 bg-slate-50 border rounded-xl space-y-2">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input type="text" id="techAddName" placeholder="Name *" class="p-1.5 border rounded text-xs">
+            <input type="text" id="techAddCode" placeholder="Code (T-101) *" class="p-1.5 border rounded text-xs uppercase font-bold">
+            <input type="password" id="techAddPin" placeholder="PIN *" class="p-1.5 border rounded text-xs font-bold">
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input type="tel" id="techAddPhone" placeholder="Mobile Number" class="p-1.5 border rounded text-xs">
+            <input type="date" id="techAddJoinDate" class="p-1.5 border rounded text-xs">
+            <input type="text" id="techAddAddress" placeholder="Address" class="p-1.5 border rounded text-xs">
+          </div>
+          <button onclick="saveNewTechnician()" class="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold">Save Tech</button>
+        </div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-slate-100 border-b"><tr><th class="p-2">Code</th><th class="p-2">Name</th><th class="p-2">Phone</th><th class="p-2">Join Date</th><th class="p-2">Address</th><th class="p-2 text-center">Action</th></tr></thead><tbody id="techMasterTableBody" class="divide-y"></tbody></table></div>
+      </div>
+
+      <!-- TAB 3: SPARES MASTER -->
+      <div id="adminTab_sparesMaster" class="hidden bg-white p-4 rounded-xl border shadow-sm space-y-3">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="font-bold text-sm">Spare Parts Master</h3>
+          <button onclick="toggleSpareAddForm()" class="bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">+ Add Part / Rate</button>
+        </div>
+        <div id="spareAddFormBox" class="hidden p-3 bg-amber-50 border rounded-xl space-y-2">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input type="text" id="spareNewName" placeholder="Part Name *" class="p-1.5 border rounded text-xs">
+            <input type="number" id="spareNewPrice" placeholder="Price (₹) *" class="p-1.5 border rounded text-xs font-bold">
+            <input type="number" id="spareNewTax" placeholder="Tax %" value="18" class="p-1.5 border rounded text-xs font-bold">
+          </div>
+          <button onclick="saveNewSparePart()" class="bg-amber-600 text-white px-4 py-1.5 rounded text-xs font-bold">Save Part</button>
+        </div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-slate-100 border-b"><tr><th class="p-2">Part Name</th><th class="p-2">Qty</th><th class="p-2">Unit Price</th><th class="p-2">Tax %</th><th class="p-2">Total Amount</th><th class="p-2 text-center">Action</th></tr></thead><tbody id="sparesMasterTableBody" class="divide-y"></tbody></table></div>
+      </div>
+
+      <!-- TAB 4: AMC MASTER -->
+      <div id="adminTab_amcMaster" class="hidden bg-white p-4 rounded-xl border shadow-sm space-y-3">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="font-bold text-sm">AMC Registered Products & QR</h3>
+          <button onclick="toggleAddAmcProductModal()" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">+ Add AMC Unit</button>
+        </div>
+        <div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead class="bg-slate-100 border-b"><tr><th class="p-2">Product ID</th><th class="p-2">Client</th><th class="p-2">Phone</th><th class="p-2">Contract</th><th class="p-2">AC Unit</th><th class="p-2">Location</th><th class="p-2 text-center">QR</th><th class="p-2 text-center">Action</th></tr></thead><tbody id="amcProductsTableBody" class="divide-y"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 2. TECHNICIAN PORTAL ==================== -->
+  <div id="techPortal" class="hidden max-w-lg mx-auto p-4 space-y-4">
+    <div class="flex justify-between items-center bg-white p-3 rounded-xl border shadow-sm">
+      <h3 class="font-bold text-sm text-slate-800"><i class="fa-solid fa-screwdriver-wrench text-blue-600 mr-1.5"></i> Technician Desk</h3>
+      <button onclick="toggleGlobalLanguage()" class="bg-slate-100 text-slate-800 px-2.5 py-1 rounded-lg text-xs font-bold border"><i class="fa-solid fa-globe mr-1"></i> <span class="currentLangDisplay">हिंदी</span></button>
+    </div>
+
+    <!-- Tech Login -->
+    <div id="techLoginBox" class="bg-white p-6 rounded-2xl border shadow-xl space-y-4">
+      <h2 class="font-bold text-base text-slate-800 border-b pb-2">Technician Login</h2>
+      <div><label class="text-xs font-bold text-slate-700">Code *</label><input type="text" id="techLoginCode" placeholder="e.g. T-101" class="w-full p-2.5 border rounded-xl text-sm font-bold uppercase mt-1 outline-none"></div>
+      <div><label class="text-xs font-bold text-slate-700">PIN *</label><input type="password" id="techLoginPin" placeholder="4-digit PIN" class="w-full p-2.5 border rounded-xl text-sm font-bold mt-1 outline-none"></div>
+      <button onclick="loginTechnician()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs shadow-md">Login</button>
+    </div>
+
+    <!-- Tech Dashboard -->
+    <div id="techDashboard" class="hidden space-y-3">
+      <div class="bg-slate-900 text-white p-3 rounded-xl flex justify-between items-center shadow">
+        <div><h3 class="font-bold text-sm" id="techGreet">Hello Technician</h3><span class="text-[10px] text-cyan-300 font-mono" id="techCodeDisplay">T-000</span></div>
+        <button onclick="logoutTech()" class="bg-rose-600 text-white px-2.5 py-1 rounded-lg text-xs font-bold">Logout</button>
+      </div>
+      <div id="techJobsList" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- ==================== 3. CUSTOMER PORTAL ==================== -->
+  <div id="custPortal" class="hidden max-w-md mx-auto p-4 space-y-4">
+    <!-- Clean Header (No Admin Button) -->
+    <div class="bg-white p-4 rounded-2xl border shadow-sm flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <i class="fa-solid fa-snowflake text-cyan-500 text-2xl"></i>
+        <div><h2 class="font-bold text-base text-slate-900 leading-none">Mahendra's Creation</h2><span class="text-[10px] text-gray-500">HVAC Service & Live Tracking</span></div>
+      </div>
+      <button onclick="toggleGlobalLanguage()" class="bg-slate-100 text-slate-800 px-3 py-1.5 rounded-xl text-xs font-bold border"><i class="fa-solid fa-globe mr-1"></i> <span class="currentLangDisplay">हिंदी</span></button>
+    </div>
+
+    <!-- Login Box -->
+    <div id="custLoginSection" class="bg-white p-5 rounded-2xl border shadow-sm space-y-3">
+      <h3 class="font-bold text-xs text-slate-800 border-b pb-1">Customer Login</h3>
+      <div><label class="text-[11px] font-bold text-gray-600">Mobile Number *</label><input type="tel" id="custLogPhone" placeholder="10-digit mobile" class="w-full p-2 border rounded-lg text-xs font-bold mt-1 outline-none"></div>
+      <div>
+        <div class="flex justify-between items-center"><label class="text-[11px] font-bold text-gray-600">PIN *</label><button type="button" onclick="openForgotPinModal()" class="text-[10px] text-blue-600 font-bold hover:underline">Forgot PIN?</button></div>
+        <input type="password" id="custLogPin" placeholder="4-digit PIN" class="w-full p-2 border rounded-lg text-xs font-bold mt-1 outline-none">
+      </div>
+      <button onclick="customerLoginAction()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-xs shadow">Login</button>
+    </div>
+
+    <!-- Customer Dashboard -->
+    <div id="custDashboardSection" class="hidden space-y-4">
+      <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl flex justify-between items-center text-xs">
+        <div><b class="text-blue-900" id="custWelcomePhone">Phone: </b><span class="text-[10px] text-emerald-600 font-bold block" id="custAmcStatusBadge">● Regular Client</span></div>
+        <div class="flex items-center gap-2">
+          <button onclick="openChangeCustPinModal()" class="text-[11px] bg-white text-blue-700 border px-2 py-1 rounded font-bold">Change PIN</button>
+          <button onclick="logoutCustomer()" class="text-[11px] text-rose-600 font-bold underline">Logout</button>
+        </div>
+      </div>
+      <div id="custAmcProductsSection" class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl space-y-2 hidden">
+        <h4 class="font-bold text-xs text-emerald-900"><i class="fa-solid fa-qrcode mr-1"></i> Registered AMC Units</h4>
+        <div id="custAmcProductList" class="space-y-1.5"></div>
+      </div>
+      <div id="custActiveTrackerBox" class="hidden"></div>
+      <div class="bg-white p-5 rounded-2xl border shadow-sm space-y-3">
+        <h3 class="font-bold text-xs text-slate-800 border-b pb-1">Book AC Complaint / Service</h3>
+        <div><label class="text-[11px] font-bold text-gray-600">Your Name *</label><input type="text" id="custName" class="w-full p-2 border rounded-lg text-xs mt-1 outline-none"></div>
+        <div>
+          <label class="text-[11px] font-bold text-gray-600">Call Type *</label>
+          <select id="custCallTypeSelect" onchange="onCustCallTypeChange()" class="w-full p-2 border rounded-lg text-xs mt-1 bg-white font-bold">
+            <option value="Breakdown">Breakdown</option><option value="Normal Service">Normal Service</option><option value="AMC Service">AMC Service</option><option value="CMC Service">CMC Service</option>
+          </select>
+        </div>
+        <div id="custProductSelectBox" class="hidden"><label class="text-[11px] font-bold text-emerald-700">Select AMC Product</label><select id="custProductSelect" class="w-full p-2 border rounded-lg text-xs mt-1 bg-white font-bold"></select></div>
+        <div><label class="text-[11px] font-bold text-gray-600">Full Address *</label><textarea id="custAddress" rows="2" class="w-full p-2 border rounded-lg text-xs mt-1 outline-none"></textarea></div>
+        <div><label class="text-[11px] font-bold text-gray-600">Fault Description *</label><textarea id="custFault" rows="2" class="w-full p-2 border rounded-lg text-xs mt-1 outline-none"></textarea></div>
+        <button onclick="bookCustComplaint()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-xs shadow">Submit Complaint (Instant OTP)</button>
+      </div>
+      <div class="bg-white p-4 rounded-xl border shadow-sm space-y-2"><h3 class="font-bold text-xs border-b pb-1">Service History</h3><div id="custHistoryRows" class="space-y-2 text-xs text-gray-400">No records found.</div></div>
+    </div>
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+  <!-- Edit Complaint Modal (Admin) -->
+  <div id="adminEditModal" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-3">
+    <div class="bg-white rounded-2xl p-5 max-w-md w-full space-y-3 shadow-2xl max-h-[90vh] overflow-y-auto text-xs">
+      <div class="flex justify-between items-center border-b pb-2"><h3 class="font-bold text-sm">Edit Complaint Record</h3><button onclick="closeAdminEditModal()" class="text-gray-400 font-bold text-lg">&times;</button></div>
+      <input type="hidden" id="editTicketId">
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="font-bold">Customer Name</label><input type="text" id="editCustName" class="w-full p-1.5 border rounded"></div>
+        <div><label class="font-bold">Phone</label><input type="tel" id="editCustPhone" class="w-full p-1.5 border rounded"></div>
+      </div>
+      <div><label class="font-bold">Address</label><textarea id="editCustAddress" rows="2" class="w-full p-1.5 border rounded"></textarea></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="font-bold">Call Type</label><select id="editCallType" class="w-full p-1.5 border rounded bg-white font-bold"><option value="Breakdown">Breakdown</option><option value="Normal Service">Normal Service</option><option value="AMC Service">AMC Service</option><option value="CMC Service">CMC Service</option></select></div>
+        <div><label class="font-bold">Assign Tech</label><select id="editAssignTech" class="w-full p-1.5 border rounded bg-white font-bold"></select></div>
+      </div>
+      <div><label class="font-bold">Fault</label><input type="text" id="editCustFault" class="w-full p-1.5 border rounded"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <div><label class="font-bold">Status</label><select id="editStatus" class="w-full p-1.5 border rounded bg-white font-bold"><option value="Open">Open</option><option value="Assigned">Assigned</option><option value="In-Progress">In-Progress</option><option value="Completed">Completed</option><option value="Cancelled">Cancelled</option></select></div>
+        <div><label class="font-bold">Bill (₹)</label><input type="number" id="editBill" class="w-full p-1.5 border rounded font-bold"></div>
+      </div>
+      <div class="flex gap-2 pt-2 border-t"><button onclick="saveAdminEditedTicket()" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg">Save Changes</button><button onclick="closeAdminEditModal()" class="px-3 bg-gray-200 rounded-lg">Cancel</button></div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div id="adminLoginModal" class="fixed inset-0 bg-black/75 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-center">
+      <div class="w-12 h-12 bg-slate-900 text-cyan-400 rounded-2xl flex items-center justify-center mx-auto text-xl"><i class="fa-solid fa-shield-halved"></i></div>
+      <h3 class="font-bold text-base text-slate-900">Admin Authentication</h3>
+      <input type="password" id="adminPinInput" placeholder="Enter Security PIN" class="w-full p-2.5 border rounded-xl text-sm font-bold text-center tracking-widest outline-none">
+      <div class="flex gap-2"><button onclick="submitAdminLogin()" class="flex-1 bg-slate-900 text-cyan-300 font-bold py-2.5 rounded-xl text-xs">Verify & Login</button><button onclick="closeAdminLoginModal()" class="px-3 bg-gray-200 text-gray-700 rounded-xl text-xs font-bold">Cancel</button></div>
+    </div>
+  </div>
+
+  <!-- Change Admin PIN Modal -->
+  <div id="changeAdminPinModal" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
+      <h3 class="font-bold text-sm border-b pb-2">Change Admin PIN</h3>
+      <div><label class="font-bold">Current Old PIN *</label><input type="password" id="admOldPin" class="w-full p-2 border rounded-lg font-bold"></div>
+      <div><label class="font-bold">New PIN *</label><input type="password" id="admNewPin" class="w-full p-2 border rounded-lg font-bold"></div>
+      <div><label class="font-bold">Confirm New PIN *</label><input type="password" id="admConfirmPin" class="w-full p-2 border rounded-lg font-bold"></div>
+      <div class="flex gap-2 pt-2"><button onclick="saveNewAdminPin()" class="flex-1 bg-amber-600 text-white font-bold py-2 rounded-lg">Update PIN</button><button onclick="closeChangeAdminPinModal()" class="px-3 bg-gray-200 rounded-lg">Cancel</button></div>
+    </div>
+  </div>
+
+  <!-- Forgot PIN Modal (Customer) -->
+  <div id="forgotPinModal" class="fixed inset-0 bg-black/75 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b pb-2"><h3 class="font-bold text-sm">Reset Customer PIN</h3><button onclick="closeForgotPinModal()" class="text-gray-400 font-bold">&times;</button></div>
+      <div>
+        <label class="font-bold">Registered Mobile *</label>
+        <div class="flex gap-1.5 mt-1"><input type="tel" id="recCustPhone" placeholder="10-digit mobile" class="flex-1 p-2 border rounded-lg font-bold"><button onclick="requestCustRecoveryOtp()" class="bg-emerald-600 text-white px-3 rounded-lg font-bold">Get OTP</button></div>
+      </div>
+      <div><label class="font-bold">4-Digit OTP *</label><input type="number" id="recCustOtpInput" class="w-full p-2 border rounded-lg font-bold text-center mt-1"></div>
+      <div><label class="font-bold">New 4-Digit PIN *</label><input type="password" id="recNewPin" class="w-full p-2 border rounded-lg font-bold mt-1"></div>
+      <div><label class="font-bold">Confirm PIN *</label><input type="password" id="recConfirmPin" class="w-full p-2 border rounded-lg font-bold mt-1"></div>
+      <button onclick="submitCustPinRecovery()" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-lg">Reset & Login</button>
+    </div>
+  </div>
+
+  <!-- Change Customer PIN Modal -->
+  <div id="changeCustPinModal" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
+      <h3 class="font-bold text-sm border-b pb-2">Change Account PIN</h3>
+      <div><label class="font-bold">Current PIN *</label><input type="password" id="custOldPin" class="w-full p-2 border rounded-lg font-bold"></div>
+      <div><label class="font-bold">New 4-Digit PIN *</label><input type="password" id="custNewPin" class="w-full p-2 border rounded-lg font-bold"></div>
+      <div><label class="font-bold">Confirm PIN *</label><input type="password" id="custConfirmPin" class="w-full p-2 border rounded-lg font-bold"></div>
+      <div class="flex gap-2 pt-2"><button onclick="saveNewCustomerPin()" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg">Update PIN</button><button onclick="closeChangeCustPinModal()" class="px-3 bg-gray-200 rounded-lg">Cancel</button></div>
+    </div>
+  </div>
+
+  <!-- Add AMC Unit Modal -->
+  <div id="amcProductModal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center p-3">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full space-y-2.5 text-xs shadow-2xl">
+      <h3 class="font-bold text-sm border-b pb-1">Register AMC AC Unit</h3>
+      <input type="text" id="amcProdCustName" placeholder="Client Name *" class="w-full p-2 border rounded">
+      <input type="tel" id="amcProdPhone" placeholder="Mobile (10 digits) *" class="w-full p-2 border rounded font-bold">
+      <div class="grid grid-cols-2 gap-2">
+        <select id="amcProdType" class="p-2 border rounded bg-white font-bold"><option value="AMC">AMC</option><option value="CMC">CMC</option></select>
+        <input type="text" id="amcProdAcType" placeholder="1.5T Split" class="p-2 border rounded">
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <input type="text" id="amcProdBrand" placeholder="Brand (Voltas)" class="p-2 border rounded">
+        <input type="text" id="amcProdLocation" placeholder="Location (Bedroom)" class="p-2 border rounded">
+      </div>
+      <div class="flex gap-2 pt-2"><button onclick="saveAmcProduct()" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-lg">Generate QR & Save</button><button onclick="toggleAddAmcProductModal()" class="px-3 bg-gray-200 rounded-lg">Cancel</button></div>
+    </div>
+  </div>
+
+  <!-- QR Print Modal -->
+  <div id="printableQrModal" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-3">
+    <div class="bg-white rounded-2xl max-w-xs w-full p-5 space-y-3 text-center shadow-2xl">
+      <h4 class="font-bold text-xs border-b pb-1">AC Machine QR Sticker</h4>
+      <div class="p-3 bg-slate-50 border rounded-xl space-y-2">
+        <h3 class="font-extrabold text-sm text-blue-700">Mahendra's Creation</h3>
+        <p class="text-[10px] text-gray-500 font-bold" id="qrModalProdTitle">Product ID</p>
+        <div id="productQrBoxLarge" class="flex justify-center p-2 bg-white rounded border"></div>
+        <div class="text-[10px] text-left space-y-0.5"><p><b>Client:</b> <span id="qrModalCustName"></span></p><p><b>Unit:</b> <span id="qrModalUnit"></span></p></div>
+      </div>
+      <div class="flex gap-2"><button onclick="window.print()" class="flex-1 bg-blue-600 text-white py-1.5 rounded-lg text-xs font-bold">Print Sticker</button><button onclick="closeQrModal()" class="px-3 bg-gray-200 py-1.5 rounded-lg text-xs font-bold">Close</button></div>
+    </div>
+  </div>
+
+  <!-- PDF Service Report Modal -->
+  <div id="serviceReportModal" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-3">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl text-xs">
+      <div class="flex justify-between items-center border-b pb-2"><h3 class="font-bold text-base">AC Service & Health Report</h3><button onclick="closeReportModal()" class="text-gray-400 font-bold text-lg">&times;</button></div>
+      <div id="printableServiceReport" class="p-4 border rounded-xl space-y-3 bg-white">
+        <div class="text-center border-b pb-2"><h2 class="text-base font-extrabold text-blue-700 uppercase">Mahendra's Creation</h2><span class="inline-block mt-1 bg-slate-900 text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold" id="repCallType">Report</span></div>
+        <div class="grid grid-cols-2 gap-2 border-b pb-2">
+          <div><p><b>Ticket ID:</b> <span id="repTicketId" class="font-mono text-blue-700 font-bold"></span></p><p><b>Date:</b> <span id="repDate"></span></p><p><b>Customer:</b> <span id="repCustName"></span></p><p><b>Phone:</b> <span id="repCustPhone"></span></p></div>
+          <div><p><b>Technician:</b> <span id="repTechName"></span></p><p><b>Address:</b> <span id="repAddress"></span></p><p><b>Fault:</b> <span id="repFault" class="text-rose-600 font-bold"></span></p><p><b>Product ID:</b> <span id="repProdId" class="font-mono text-emerald-700 font-bold"></span></p></div>
+        </div>
+        <div id="repSparesSection" class="hidden"><h4 class="font-bold mb-1">Spare Parts Used:</h4><div id="repSparesList" class="border rounded p-2 bg-slate-50 space-y-1"></div></div>
+        <div>
+          <h4 class="font-bold mb-1">AC Digital Health Report:</h4>
+          <table class="w-full border-collapse border text-[11px]"><tr class="bg-slate-50"><td class="border p-1">Before Temp</td><td class="border p-1 font-bold" id="repTempBefore">-</td></tr><tr><td class="border p-1">After Temp</td><td class="border p-1 font-bold text-emerald-700" id="repTempAfter">-</td></tr><tr class="bg-slate-50"><td class="border p-1">Gas PSI</td><td class="border p-1 font-bold" id="repGasPsi">-</td></tr><tr><td class="border p-1">Amps</td><td class="border p-1 font-bold" id="repAmps">-</td></tr></table>
+        </div>
+        <div class="bg-emerald-50 border border-emerald-300 p-2.5 rounded-lg flex justify-between items-center">
+          <div><span class="text-[10px] text-emerald-800 font-bold block">Final Bill Payable:</span><span class="text-base font-extrabold text-emerald-900" id="repFinalBill">₹0</span></div>
+          <div class="text-right text-[10px] text-emerald-800"><b>🛡️ 30 Days Warranty</b><br><span class="font-bold text-emerald-700">Verified & Completed</span></div>
+        </div>
+      </div>
+      <div class="flex gap-2"><button onclick="window.print()" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl text-xs"><i class="fa-solid fa-print mr-1"></i> Print / PDF</button><button onclick="closeReportModal()" class="px-4 bg-gray-200 rounded-xl text-xs font-bold">Close</button></div>
+    </div>
+  </div>
+
+  <!-- Admin Direct Booking Modal -->
+  <div id="adminDirectModal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full space-y-2 text-xs shadow-2xl">
+      <div class="flex justify-between items-center border-b pb-1"><h3 class="font-bold text-sm">Book Direct Complaint</h3><button onclick="closeAdminDirectModal()" class="text-gray-400">&times;</button></div>
+      <input type="text" id="dirCustName" placeholder="Customer Name *" class="w-full p-2 border rounded">
+      <input type="tel" id="dirCustPhone" placeholder="Mobile Number (10 digits) *" class="w-full p-2 border rounded font-bold">
+      <select id="dirCallTypeSelect" class="w-full p-2 border rounded bg-white font-bold"><option value="Breakdown">Breakdown</option><option value="Normal Service">Normal Service</option><option value="AMC Service">AMC Service</option><option value="CMC Service">CMC Service</option></select>
+      <input type="text" id="dirCustAddress" placeholder="Full Address *" class="w-full p-2 border rounded">
+      <input type="text" id="dirCustFault" placeholder="Fault Description *" class="w-full p-2 border rounded">
+      <select id="dirAssignTech" class="w-full p-2 border rounded font-bold bg-white"></select>
+      <div class="flex gap-2 pt-2"><button onclick="saveAdminDirectTicket()" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg">Save Ticket</button><button onclick="closeAdminDirectModal()" class="px-3 bg-gray-200 rounded-lg">Cancel</button></div>
+    </div>
+  </div>
+
+  <!-- Multi Photo Modal -->
+  <div id="multiPhotoModal" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-4 max-w-lg w-full space-y-3 text-center">
+      <div class="flex justify-between items-center border-b pb-1"><h3 class="font-bold text-sm" id="multiPhotoTitle">Fault Photos</h3><button onclick="closeMultiPhotoModal()" class="text-gray-400 font-bold">&times;</button></div>
+      <div id="multiPhotoContainer" class="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto p-1"></div>
+      <button onclick="closeMultiPhotoModal()" class="w-full py-1.5 bg-slate-100 font-bold text-xs rounded-lg">Close</button>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT ==================== -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBc73pqmsAMy6QUA5Q5oVooG-YH4HDi3lo",
+      authDomain: "mahendrascreation-489ba.firebaseapp.com",
+      databaseURL: "https://mahendrascreation-489ba-default-rtdb.firebaseio.com",
+      projectId: "mahendrascreation-489ba",
+      storageBucket: "mahendrascreation-489ba.firebasestorage.app",
+      messagingSenderId: "898853687985",
+      appId: "1:898853687985:web:43c5b453e28b9e58450890",
+      measurementId: "G-QDYQ39JNYR"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let appDb = { technicians: [], spareParts: [], customers: {}, tickets: [], amcProducts: [], adminPin: "1234" };
+    let activeTechUser = JSON.parse(localStorage.getItem('mc_logged_tech_user_cloud')) || null;
+    let activeCustomerPhone = localStorage.getItem('mc_logged_cust_phone_cloud') || null;
+    let isAdminAuthenticated = (sessionStorage.getItem('mc_admin_auth') === 'true');
+    let currentLang = localStorage.getItem('mc_app_lang') || 'en';
+    let tempCustResetOtp = null, tempCustResetPhone = null;
+
+    function normalizePhone(p) { return p ? String(p).replace(/\D/g, '').slice(-10) : ""; }
+    function normalizeCode(c) { return c ? String(c).trim().toUpperCase() : ""; }
+
+    function playNotificationSound(type = 'info') {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext(), osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(type === 'success' ? 587.33 : 440, ctx.currentTime);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        osc.start(); osc.stop(ctx.currentTime + 0.25);
+      } catch(e) {}
+    }
+
+    function showToastNotification(msg, type = 'info') {
+      playNotificationSound(type);
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `p-3 rounded-xl shadow-xl border text-xs text-white pointer-events-auto flex items-center justify-between ${type==='success'?'bg-emerald-600':(type==='alert'?'bg-rose-600':'bg-slate-900')}`;
+      toast.innerHTML = `<span>${msg}</span><button onclick="this.parentElement.remove()" class="ml-2 font-bold">&times;</button>`;
+      container.appendChild(toast);
+      setTimeout(() => { if (toast.parentElement) toast.remove(); }, 4000);
+    }
+
+    function startFirebaseRealtimeSync() {
+      db.ref('settings/adminPin').on('value', snap => { appDb.adminPin = snap.val() ? String(snap.val()) : "1234"; });
+      db.ref('tickets').on('value', snap => {
+        const val = snap.val();
+        appDb.tickets = val ? Object.values(val).map(item => {
+          if (item.sparesUsed && !Array.isArray(item.sparesUsed)) item.sparesUsed = Object.values(item.sparesUsed);
+          else if (!item.sparesUsed) item.sparesUsed = [];
+          return item;
+        }).sort((a,b) => (b.timestamp||0) - (a.timestamp||0)) : [];
+        renderAllViews();
+      });
+      db.ref('technicians').on('value', snap => {
+        const val = snap.val();
+        appDb.technicians = val ? Object.values(val) : [
+          { code: "T-101", name: "Rohit Sharma", pin: "1234", phone: "9876543210", joinDate: "2024-01-10", address: "Jaipur" },
+          { code: "T-102", name: "Amit Verma", pin: "1234", phone: "9876543211", joinDate: "2024-02-15", address: "Jaipur" }
+        ];
+        renderTechMasterTable();
+        populateTechDropdowns();
+      });
+      db.ref('spareParts').on('value', snap => {
+        const val = snap.val();
+        appDb.spareParts = val ? Object.values(val) : [
+          { id: "SP-1", name: "Jet Pump Service", price: 499, tax: 18 },
+          { id: "SP-2", name: "Gas Charging (R32)", price: 2200, tax: 18 },
+          { id: "SP-3", name: "Capacitor 45mfd", price: 450, tax: 18 }
+        ];
+        renderAdminSparesTable();
+      });
+      db.ref('amcProducts').on('value', snap => {
+        appDb.amcProducts = snap.val() ? Object.values(snap.val()) : [];
+        renderAmcProductsTable();
+        renderCustomerAmcProducts();
+      });
+      db.ref('customers').on('value', snap => { appDb.customers = snap.val() || {}; });
+    }
+
+    function renderAllViews() {
+      applyAdminFilters();
+      renderTechMasterTable();
+      renderAdminSparesTable();
+      renderAmcProductsTable();
+      updateAdminKpis();
+      if (activeTechUser) renderTechAssignedJobs();
+      if (activeCustomerPhone) { renderCustHistory(); renderCustomerActiveTracker(); renderCustomerAmcProducts(); }
+    }
+
+    function updateAdminKpis() {
+      const total = appDb.tickets.length;
+      const active = appDb.tickets.filter(t => t.status === 'In-Progress' || t.status === 'Assigned').length;
+      const done = appDb.tickets.filter(t => t.status === 'Completed').length;
+      const rev = appDb.tickets.reduce((sum, t) => sum + (parseFloat(t.bill)||0), 0);
+      if (document.getElementById('kpiTotalTickets')) document.getElementById('kpiTotalTickets').innerText = total;
+      if (document.getElementById('kpiActiveTickets')) document.getElementById('kpiActiveTickets').innerText = active;
+      if (document.getElementById('kpiCompletedTickets')) document.getElementById('kpiCompletedTickets').innerText = done;
+      if (document.getElementById('kpiTotalRevenue')) document.getElementById('kpiTotalRevenue').innerText = `₹${rev}`;
+    }
+
+    window.onload = function() {
+      const hash = window.location.hash;
+      document.getElementById('adminPortal').classList.add('hidden');
+      document.getElementById('techPortal').classList.add('hidden');
+      document.getElementById('custPortal').classList.add('hidden');
+      if (hash.startsWith('#admin')) {
+        if (isAdminAuthenticated) { document.getElementById('adminPortal').classList.remove('hidden'); switchAdminTab('complaintsTab'); }
+        else openAdminLoginModal();
+      } else if (hash.startsWith('#tech')) {
+        document.getElementById('techPortal').classList.remove('hidden');
+        checkAutoTechLogin();
+      } else {
+        document.getElementById('custPortal').classList.remove('hidden');
+        checkAutoCustomerLogin();
+        handleQrDeepLink();
+      }
+      startFirebaseRealtimeSync();
+    };
+
+    function handleQrDeepLink() {
+      const prodId = new URLSearchParams(window.location.search).get('prodId');
+      if (prodId) {
+        setTimeout(() => {
+          const prod = appDb.amcProducts.find(p => p.id === prodId);
+          if (prod) {
+            document.getElementById('custName').value = prod.custName || '';
+            document.getElementById('custCallTypeSelect').value = (prod.contractType === 'CMC' ? 'CMC Service' : 'AMC Service');
+            onCustCallTypeChange();
+            document.getElementById('custFault').value = `Auto-booked from QR for ${prod.brand} (${prod.location})`;
+            showToastNotification(`QR Verified! Unit: ${prod.id}`, 'success');
+          }
+        }, 1000);
+      }
+    }
+
+    function toggleGlobalLanguage() {
+      currentLang = (currentLang === 'en') ? 'hi' : 'en';
+      localStorage.setItem('mc_app_lang', currentLang);
+      document.getElementById('currentLangLabel').innerText = (currentLang === 'en') ? 'हिंदी' : 'English';
+      document.querySelectorAll('.currentLangDisplay').forEach(el => el.innerText = (currentLang === 'en') ? 'हिंदी' : 'English');
+      renderAllViews();
+    }
+
+    // --- ADMIN ACTIONS ---
+    function openAdminLoginModal() { document.getElementById('adminPinInput').value = ''; document.getElementById('adminLoginModal').classList.remove('hidden'); }
+    function closeAdminLoginModal() { document.getElementById('adminLoginModal').classList.add('hidden'); if (!isAdminAuthenticated) window.location.hash = "#customer"; }
+    function submitAdminLogin() {
+      const pin = document.getElementById('adminPinInput').value.trim();
+      if (pin === (appDb.adminPin || "1234")) {
+        isAdminAuthenticated = true; sessionStorage.setItem('mc_admin_auth', 'true');
+        document.getElementById('adminLoginModal').classList.add('hidden');
+        document.getElementById('adminPortal').classList.remove('hidden');
+        switchAdminTab('complaintsTab');
+      } else alert("Invalid PIN!");
+    }
+    function logoutAdmin() { isAdminAuthenticated = false; sessionStorage.removeItem('mc_admin_auth'); window.location.hash = "#customer"; window.location.reload(); }
+
+    function openChangeAdminPinModal() { document.getElementById('admOldPin').value = ''; document.getElementById('admNewPin').value = ''; document.getElementById('admConfirmPin').value = ''; document.getElementById('changeAdminPinModal').classList.remove('hidden'); }
+    function closeChangeAdminPinModal() { document.getElementById('changeAdminPinModal').classList.add('hidden'); }
+    function saveNewAdminPin() {
+      const o = document.getElementById('admOldPin').value.trim(), n = document.getElementById('admNewPin').value.trim(), c = document.getElementById('admConfirmPin').value.trim();
+      if (o !== (appDb.adminPin || "1234")) return alert("Incorrect Old PIN!");
+      if (!n || n.length < 4 || n !== c) return alert("New PINs must match and be at least 4 digits!");
+      db.ref('settings/adminPin').set(n).then(() => { appDb.adminPin = n; closeChangeAdminPinModal(); showToastNotification("Admin PIN Updated!", "success"); });
+    }
+
+    function switchAdminTab(k) {
+      ['complaintsTab', 'techMasterTab', 'sparesMasterTab', 'amcMasterTab'].forEach(t => {
+        document.getElementById('adminTab_' + t.replace('Tab',''))?.classList.add('hidden');
+        const b = document.getElementById('btnTab' + t.replace('Tab','').charAt(0).toUpperCase() + t.replace('Tab','').slice(1));
+        if (b) b.className = "px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 font-bold";
+      });
+      if (k === 'complaintsTab') { document.getElementById('adminTab_complaints').classList.remove('hidden'); document.getElementById('btnTabComplaints').className = "px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-bold"; }
+      else if (k === 'techMasterTab') { document.getElementById('adminTab_techMaster').classList.remove('hidden'); document.getElementById('btnTabTech').className = "px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold"; }
+      else if (k === 'sparesMasterTab') { document.getElementById('adminTab_sparesMaster').classList.remove('hidden'); document.getElementById('btnTabSpares').className = "px-3 py-1.5 rounded-lg bg-amber-600 text-white font-bold"; }
+      else if (k === 'amcMasterTab') { document.getElementById('adminTab_amcMaster').classList.remove('hidden'); document.getElementById('btnTabAmc').className = "px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold"; }
+    }
+
+    function applyAdminFilters() {
+      const q = (document.getElementById('filterSearchQuery')?.value || '').toLowerCase().trim();
+      const st = document.getElementById('filterStatus')?.value || 'ALL';
+      const tc = document.getElementById('filterTech')?.value || 'ALL';
+      const cl = document.getElementById('filterCallType')?.value || 'ALL';
+      let filtered = appDb.tickets.filter(t => {
+        const mQ = !q || (t.name&&t.name.toLowerCase().includes(q)) || (t.phone&&t.phone.includes(q)) || (t.id&&t.id.toLowerCase().includes(q)) || (t.productId&&t.productId.toLowerCase().includes(q));
+        const mS = (st === 'ALL' || t.status === st);
+        const mT = (tc === 'ALL' || normalizeCode(t.techCode) === normalizeCode(tc));
+        const mC = (cl === 'ALL' || t.callType === cl);
+        return mQ && mS && mT && mC;
+      });
+      renderAdminComplaintsRows(filtered);
+    }
+
+    function renderAdminComplaintsRows(list) {
+      const tbody = document.getElementById('adminTableRows');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      if (list.length === 0) { tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-gray-400">No records found.</td></tr>`; return; }
+
+      list.forEach(tkt => {
+        let techOpts = `<option value="Unassigned" ${normalizeCode(tkt.techCode)==='UNASSIGNED'||normalizeCode(tkt.techCode)==='असाइन नहीं'?'selected':''}>Unassigned</option>`;
+        appDb.technicians.forEach(tc => {
+          techOpts += `<option value="${tc.code}" ${normalizeCode(tkt.techCode)===normalizeCode(tc.code)?'selected':''}>${tc.name} (${tc.code})</option>`;
+        });
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 border-b">
+            <td class="p-3"><b class="text-blue-700 font-mono">${tkt.id}</b><div class="text-[10px] text-gray-400">${tkt.date}</div></td>
+            <td class="p-3"><b>${tkt.name}</b><div class="text-[11px] font-mono text-gray-500">${tkt.phone}</div><div class="text-[10px] text-gray-400 truncate max-w-[120px]">${tkt.address}</div></td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${tkt.callType?.includes('AMC')||tkt.callType?.includes('CMC')?'bg-emerald-100 text-emerald-800':'bg-blue-100 text-blue-800'}">${tkt.callType}</span><div class="text-rose-600 text-[11px] truncate max-w-[120px]">${tkt.fault}</div></td>
+            <td class="p-3 font-mono font-bold text-emerald-700">${tkt.productId ? `<span class="bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 text-[10px]">${tkt.productId}</span>` : '-'}</td>
+            <!-- DIRECT ASSIGN TECH DROPDOWN -->
+            <td class="p-3">
+              <select onchange="directAssignTech('${tkt.id}', this.value)" class="p-1 border rounded text-xs font-bold bg-white text-slate-800 shadow-sm outline-none">
+                ${techOpts}
+              </select>
+            </td>
+            <!-- DIRECT STATUS DROPDOWN -->
+            <td class="p-3">
+              <select onchange="directChangeStatus('${tkt.id}', this.value)" class="p-1 border rounded text-xs font-bold outline-none shadow-sm ${tkt.status==='Completed'?'bg-emerald-50 text-emerald-700 border-emerald-300':(tkt.status==='In-Progress'?'bg-amber-50 text-amber-700 border-amber-300':(tkt.status==='Assigned'?'bg-blue-50 text-blue-700 border-blue-300':(tkt.status==='Cancelled'?'bg-rose-50 text-rose-700 border-rose-300':'bg-white')))}">
+                <option value="Open" ${tkt.status==='Open'?'selected':''}>Open</option>
+                <option value="Assigned" ${tkt.status==='Assigned'?'selected':''}>Assigned</option>
+                <option value="In-Progress" ${tkt.status==='In-Progress'?'selected':''}>In-Progress</option>
+                <option value="Completed" ${tkt.status==='Completed'?'selected':''}>Completed</option>
+                <option value="Cancelled" ${tkt.status==='Cancelled'?'selected':''}>Cancelled</option>
+              </select>
+            </td>
+            <td class="p-3"><div class="text-[10px]">Start: <b>${tkt.startOtp}</b> | Close: <b>${tkt.closeOtp}</b></div><button onclick="adminSendOtpWhatsApp('${tkt.id}')" class="mt-0.5 bg-emerald-600 text-white px-2 py-0.5 rounded text-[9px] font-bold"><i class="fa-brands fa-whatsapp"></i> OTP</button></td>
+            <td class="p-3 font-bold">₹${tkt.bill || 0}</td>
+            <!-- ACTIONS (EDIT, CANCEL, DELETE, PDF) -->
+            <td class="p-3 text-center">
+              <div class="flex items-center justify-center gap-1">
+                <button onclick="openAdminEditModal('${tkt.id}')" title="Edit" class="p-1.5 rounded bg-blue-50 text-blue-700 border border-blue-200"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button onclick="adminCancelTicket('${tkt.id}')" title="Cancel" class="p-1.5 rounded bg-amber-50 text-amber-700 border border-amber-200"><i class="fa-solid fa-ban"></i></button>
+                <button onclick="adminDeleteTicket('${tkt.id}')" title="Delete" class="p-1.5 rounded bg-rose-50 text-rose-700 border border-rose-200"><i class="fa-solid fa-trash-can"></i></button>
+                <button onclick="openServiceReportModal('${tkt.id}')" title="PDF" class="p-1.5 rounded bg-slate-900 text-cyan-300"><i class="fa-solid fa-file-pdf"></i></button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function directAssignTech(tId, tc) {
+      const u = { techCode: tc }; if (tc !== 'Unassigned' && tc !== 'असाइन नहीं') u.status = 'Assigned';
+      db.ref('tickets/' + tId).update(u).then(() => showToastNotification(`Tech ${tc} Assigned!`, "success"));
+    }
+
+    function directChangeStatus(tId, st) {
+      db.ref('tickets/' + tId).update({ status: st }).then(() => showToastNotification(`Status changed to ${st}`, "info"));
+    }
+
+    function openAdminEditModal(tId) {
+      const t = appDb.tickets.find(x => x.id === tId); if (!t) return;
+      document.getElementById('editTicketId').value = t.id;
+      document.getElementById('editCustName').value = t.name || '';
+      document.getElementById('editCustPhone').value = t.phone || '';
+      document.getElementById('editCustAddress').value = t.address || '';
+      document.getElementById('editCallType').value = t.callType || 'Breakdown';
+      document.getElementById('editCustFault').value = t.fault || '';
+      document.getElementById('editStatus').value = t.status || 'Open';
+      document.getElementById('editBill').value = t.bill || 0;
+      const s = document.getElementById('editAssignTech');
+      s.innerHTML = `<option value="Unassigned">Unassigned</option>`;
+      appDb.technicians.forEach(tc => { s.innerHTML += `<option value="${tc.code}" ${normalizeCode(t.techCode)===normalizeCode(tc.code)?'selected':''}>${tc.name} (${tc.code})</option>`; });
+      document.getElementById('adminEditModal').classList.remove('hidden');
+    }
+    function closeAdminEditModal() { document.getElementById('adminEditModal').classList.add('hidden'); }
+    function saveAdminEditedTicket() {
+      const id = document.getElementById('editTicketId').value;
+      const u = {
+        name: document.getElementById('editCustName').value.trim(),
+        phone: normalizePhone(document.getElementById('editCustPhone').value),
+        address: document.getElementById('editCustAddress').value.trim(),
+        callType: document.getElementById('editCallType').value,
+        techCode: document.getElementById('editAssignTech').value,
+        fault: document.getElementById('editCustFault').value.trim(),
+        status: document.getElementById('editStatus').value,
+        bill: parseFloat(document.getElementById('editBill').value) || 0
+      };
+      db.ref('tickets/' + id).update(u).then(() => { closeAdminEditModal(); showToastNotification("Ticket Updated!", "success"); });
+    }
+    function adminCancelTicket(id) { if (confirm("Cancel this ticket?")) db.ref('tickets/' + id).update({ status: 'Cancelled' }); }
+    function adminDeleteTicket(id) { if (confirm("PERMANENT DELETE ticket " + id + "?")) db.ref('tickets/' + id).remove(); }
+    function adminSendOtpWhatsApp(id) {
+      const t = appDb.tickets.find(x => x.id === id); if (!t) return;
+      const m = encodeURIComponent(`Mahendra's Creation: Ticket ${t.id} OTPs:\nStart: ${t.startOtp}\nClose: ${t.closeOtp}`);
+      window.open(`https://wa.me/91${normalizePhone(t.phone)}?text=${m}`, '_blank');
+    }
+
+    // --- TECHNICIAN FLOW & MULTI-PARTS ---
+    function checkAutoTechLogin() {
+      if (activeTechUser) {
+        document.getElementById('techLoginBox').classList.add('hidden');
+        document.getElementById('techDashboard').classList.remove('hidden');
+        document.getElementById('techGreet').innerText = `Hello, ${activeTechUser.name}`;
+        document.getElementById('techCodeDisplay').innerText = activeTechUser.code;
+        renderTechAssignedJobs();
+      }
+    }
+    function loginTechnician() {
+      const c = normalizeCode(document.getElementById('techLoginCode').value), p = document.getElementById('techLoginPin').value.trim();
+      const tech = appDb.technicians.find(tc => normalizeCode(tc.code) === c && tc.pin === p);
+      if (tech) { activeTechUser = tech; localStorage.setItem('mc_logged_tech_user_cloud', JSON.stringify(tech)); checkAutoTechLogin(); }
+      else alert("Invalid Tech Code or PIN!");
+    }
+    function logoutTech() { activeTechUser = null; localStorage.removeItem('mc_logged_tech_user_cloud'); document.getElementById('techLoginBox').classList.remove('hidden'); document.getElementById('techDashboard').classList.add('hidden'); }
+
+    function renderTechAssignedJobs() {
+      const container = document.getElementById('techJobsList');
+      if (!container || !activeTechUser) return;
+      const myJobs = appDb.tickets.filter(t => normalizeCode(t.techCode) === normalizeCode(activeTechUser.code));
+      container.innerHTML = myJobs.length === 0 ? `<div class="p-6 bg-white rounded-xl border text-center text-gray-400 text-xs">No active tasks assigned to ${activeTechUser.code}.</div>` : '';
+
+      myJobs.forEach(job => {
+        const isAmc = (job.callType === 'AMC Service' || job.callType === 'CMC Service');
+        let sparesOpts = `<option value="">-- Choose Spare from List --</option>`;
+        appDb.spareParts.forEach(s => { sparesOpts += `<option value="${s.id}">${s.name} (₹${s.price})</option>`; });
+
+        let partsSum = 0;
+        (job.sparesUsed || []).forEach(su => { partsSum += (parseFloat(su.price)||0) * (parseInt(su.qty)||1); });
+        let laborFee = (job.baseBill !== undefined) ? parseFloat(job.baseBill) : 350;
+        let subtotal = partsSum + laborFee;
+        let taxVal = Math.round(subtotal * 0.18);
+        let grandTotal = isAmc ? 0 : (subtotal + taxVal);
+
+        container.innerHTML += `
+          <div class="bg-white p-4 rounded-xl border shadow-sm space-y-3 text-xs">
+            <div class="flex justify-between items-center border-b pb-2">
+              <span class="font-mono font-bold text-blue-700">${job.id} (${job.date})</span>
+              <span class="px-2 py-0.5 rounded font-bold ${job.status==='Completed'?'bg-emerald-100 text-emerald-800':'bg-blue-100 text-blue-800'}">${job.status}</span>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm">${job.name} <a href="tel:${job.phone}" class="ml-2 text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-200"><i class="fa-solid fa-phone"></i> Call</a></h4>
+              <p class="text-gray-500">${job.address}</p>
+              <p class="text-rose-600 font-bold mt-1">Fault: ${job.fault}</p>
+            </div>
+
+            ${job.status === 'Assigned' ? `
+              <div class="p-3 bg-blue-50 border rounded-xl space-y-2">
+                <span class="font-bold block text-blue-900">Enter Start OTP from Customer:</span>
+                <div class="flex gap-1.5"><input type="number" id="techStartInp_${job.id}" placeholder="Start OTP" class="w-28 p-2 border rounded-lg text-center font-bold bg-white"><button onclick="techStartAction('${job.id}')" class="flex-1 bg-blue-600 text-white font-bold rounded-lg">Start Work</button></div>
+              </div>
+            ` : ''}
+
+            ${job.status === 'In-Progress' ? `
+              <div class="p-3.5 bg-slate-50 border rounded-xl space-y-3">
+                <!-- MULTIPLE SPARES SELECTOR -->
+                <div class="space-y-1.5 border-b pb-2">
+                  <span class="font-bold block text-slate-800">Add Spare Parts (Multiple):</span>
+                  <div class="flex gap-1"><select id="techSelectSpare_${job.id}" class="flex-1 p-1.5 border rounded bg-white">${sparesOpts}</select><input type="number" id="techQty_${job.id}" value="1" min="1" class="w-12 p-1.5 border rounded text-center font-bold bg-white"><button onclick="addPredefinedSpare('${job.id}')" class="bg-blue-600 text-white px-3 rounded font-bold">+ Add</button></div>
+                  <!-- Custom Part Option -->
+                  <div class="flex gap-1 pt-1"><input type="text" id="custPartName_${job.id}" placeholder="Or Custom Part Name" class="flex-1 p-1 border rounded bg-white text-[11px]"><input type="number" id="custPartPrice_${job.id}" placeholder="₹ Price" class="w-16 p-1 border rounded bg-white font-bold text-[11px]"><button onclick="addCustomSpare('${job.id}')" class="bg-emerald-600 text-white px-2 rounded font-bold text-[11px]">Add Custom</button></div>
+                  <!-- Spares Added Basket -->
+                  <div class="space-y-1 pt-1">
+                    ${(job.sparesUsed || []).map((su, idx) => `
+                      <div class="flex justify-between items-center bg-white p-1.5 border rounded text-[11px]">
+                        <span>${su.name} (Qty: ${su.qty}) = ₹${(su.price * su.qty)}</span>
+                        <button onclick="removeSpareItem('${job.id}', ${idx})" class="text-rose-600 font-bold px-1">&times;</button>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <!-- Photos & Remarks -->
+                <div class="space-y-2 border-b pb-2">
+                  <label class="font-bold block">Photos (Multiple):</label>
+                  <input type="file" multiple accept="image/*" onchange="uploadMultiplePhotos('${job.id}', this)" class="w-full text-xs">
+                  <div class="flex flex-wrap gap-1 mt-1">${(job.photos || []).map((img, idx) => `<div class="relative w-12 h-12 border rounded overflow-hidden"><img src="${img}" class="w-full h-full object-cover"><button onclick="removeJobPhoto('${job.id}', ${idx})" class="absolute top-0 right-0 bg-red-600 text-white w-3 h-3 flex items-center justify-center text-[9px] font-bold">&times;</button></div>`).join('')}</div>
+                  <textarea id="techRemarks_${job.id}" rows="2" placeholder="Work Remarks..." class="w-full p-1.5 border rounded mt-1 bg-white">${job.techRemarks || ''}</textarea>
+                </div>
+
+                <!-- Health Report -->
+                <div class="grid grid-cols-2 gap-2 border-b pb-2">
+                  <input type="number" id="hr_tBefore_${job.id}" value="${job.healthReport?.tempBefore || '24'}" placeholder="Before Temp" class="p-1 border rounded bg-white">
+                  <input type="number" id="hr_tAfter_${job.id}" value="${job.healthReport?.tempAfter || '16'}" placeholder="After Temp" class="p-1 border rounded bg-white text-emerald-700 font-bold">
+                  <input type="number" id="hr_psi_${job.id}" value="${job.healthReport?.gasPsi || '65'}" placeholder="Gas PSI" class="p-1 border rounded bg-white">
+                  <input type="number" id="hr_amps_${job.id}" value="${job.healthReport?.amps || '6.5'}" placeholder="Amps" class="p-1 border rounded bg-white">
+                </div>
+
+                <!-- Bill Calculation -->
+                ${isAmc ? `<div class="p-2 bg-emerald-50 border rounded text-emerald-800 font-bold">AMC Active: Bill is ₹0.</div>` : `
+                  <div class="bg-white p-2.5 border rounded space-y-1">
+                    <div class="flex justify-between"><span>Parts Total:</span><b>₹${partsSum}</b></div>
+                    <div class="flex justify-between items-center"><span>Labor Fee (₹):</span><input type="number" id="techLaborFee_${job.id}" oninput="recalcBill('${job.id}', ${partsSum})" value="${laborFee}" class="w-20 p-1 border rounded text-right font-bold"></div>
+                    <div class="flex justify-between text-gray-500"><span>GST (18%):</span><b id="taxDisp_${job.id}">₹${taxVal}</b></div>
+                    <div class="flex justify-between border-t pt-1 font-bold text-sm"><span>Grand Total:</span><b class="text-emerald-700" id="grandDisp_${job.id}">₹${grandTotal}</b></div>
+                  </div>
+                `}
+
+                <!-- Closing OTP -->
+                <div class="flex gap-1.5 pt-1">
+                  <input type="number" id="techCloseInp_${job.id}" placeholder="Customer Close OTP *" class="w-32 p-2 border rounded-xl text-center font-bold bg-white">
+                  <button onclick="techFinishAction('${job.id}', ${isAmc})" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl">Complete Job</button>
+                </div>
+              </div>
+            ` : ''}
+
+            ${job.status === 'Completed' ? `<div class="p-2.5 bg-green-50 border rounded-xl flex justify-between items-center"><b class="text-emerald-800">Job Done (₹${job.bill})</b><button onclick="openServiceReportModal('${job.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold">View PDF</button></div>` : ''}
+          </div>
+        `;
+      });
+    }
+
+    function addPredefinedSpare(jId) {
+      const sId = document.getElementById(`techSelectSpare_${jId}`).value;
+      const q = parseInt(document.getElementById(`techQty_${jId}`).value) || 1;
+      if (!sId) return alert("Select a part!");
+      const sp = appDb.spareParts.find(s => s.id === sId); if (!sp) return;
+      const t = appDb.tickets.find(x => x.id === jId);
+      let list = Array.isArray(t.sparesUsed) ? t.sparesUsed : Object.values(t.sparesUsed||{});
+      list.push({ id: sp.id, name: sp.name, price: parseFloat(sp.price)||0, qty: q });
+      syncSparesAndBill(jId, list, t);
+    }
+
+    function addCustomSpare(jId) {
+      const n = document.getElementById(`custPartName_${jId}`).value.trim();
+      const p = parseFloat(document.getElementById(`custPartPrice_${jId}`).value);
+      if (!n || isNaN(p)) return alert("Enter Part Name and Price!");
+      const t = appDb.tickets.find(x => x.id === jId);
+      let list = Array.isArray(t.sparesUsed) ? t.sparesUsed : Object.values(t.sparesUsed||{});
+      list.push({ id: "CUST-" + Date.now().toString().slice(-4), name: n, price: p, qty: 1 });
+      syncSparesAndBill(jId, list, t);
+    }
+
+    function removeSpareItem(jId, idx) {
+      const t = appDb.tickets.find(x => x.id === jId);
+      let list = Array.isArray(t.sparesUsed) ? t.sparesUsed : Object.values(t.sparesUsed||{});
+      list.splice(idx, 1);
+      syncSparesAndBill(jId, list, t);
+    }
+
+    function syncSparesAndBill(jId, list, t) {
+      const isAmc = (t.callType === 'AMC Service' || t.callType === 'CMC Service');
+      let updates = { sparesUsed: list };
+      if (isAmc) { updates.bill = 0; updates.baseBill = 0; updates.taxAmount = 0; }
+      else {
+        let pSum = 0; list.forEach(item => { pSum += (parseFloat(item.price)||0) * (parseInt(item.qty)||1); });
+        let labor = (t.baseBill !== undefined) ? parseFloat(t.baseBill) : 350;
+        let sub = pSum + labor;
+        let tax = Math.round(sub * 0.18);
+        updates.baseBill = labor; updates.taxAmount = tax; updates.bill = sub + tax;
+      }
+      db.ref('tickets/' + jId).update(updates);
+    }
+
+    function recalcBill(jId, partsSum) {
+      const labor = parseFloat(document.getElementById(`techLaborFee_${jId}`)?.value) || 0;
+      const sub = partsSum + labor;
+      const tax = Math.round(sub * 0.18);
+      const total = sub + tax;
+      if (document.getElementById(`taxDisp_${jId}`)) document.getElementById(`taxDisp_${jId}`).innerText = `₹${tax}`;
+      if (document.getElementById(`grandDisp_${jId}`)) document.getElementById(`grandDisp_${jId}`).innerText = `₹${total}`;
+    }
+
+    function uploadMultiplePhotos(jId, inp) {
+      if (!inp.files || !inp.files.length) return;
+      const t = appDb.tickets.find(x => x.id === jId);
+      let photos = Array.isArray(t.photos) ? t.photos : [];
+      Array.from(inp.files).forEach(file => {
+        const r = new FileReader();
+        r.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            if (w > 360) { h *= 360 / w; w = 360; }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            photos.push(canvas.toDataURL('image/jpeg', 0.5));
+            db.ref(`tickets/${jId}/photos`).set(photos);
+          };
+          img.src = e.target.result;
+        };
+        r.readAsDataURL(file);
+      });
+    }
+    function removeJobPhoto(jId, idx) {
+      const t = appDb.tickets.find(x => x.id === jId);
+      let photos = Array.isArray(t.photos) ? t.photos : [];
+      photos.splice(idx, 1);
+      db.ref(`tickets/${jId}/photos`).set(photos);
+    }
+
+    function techStartAction(tId) {
+      const t = appDb.tickets.find(x => x.id === tId);
+      if (document.getElementById(`techStartInp_${tId}`).value.trim() === t.startOtp) {
+        db.ref('tickets/' + tId).update({ status: 'In-Progress' });
+      } else alert("Invalid Start OTP!");
+    }
+
+    function techFinishAction(tId, isAmc) {
+      const t = appDb.tickets.find(x => x.id === tId);
+      if (document.getElementById(`techCloseInp_${tId}`).value.trim() !== t.closeOtp) return alert("Invalid Close OTP!");
+      const hr = {
+        tempBefore: document.getElementById(`hr_tBefore_${tId}`)?.value || '24',
+        tempAfter: document.getElementById(`hr_tAfter_${tId}`)?.value || '16',
+        gasPsi: document.getElementById(`hr_psi_${tId}`)?.value || '65',
+        amps: document.getElementById(`hr_amps_${tId}`)?.value || '6.5'
+      };
+      const rem = document.getElementById(`techRemarks_${tId}`)?.value.trim() || '';
+      let bill = 0, labor = 0, tax = 0;
+      if (!isAmc) {
+        labor = parseFloat(document.getElementById(`techLaborFee_${tId}`)?.value) || 0;
+        let pSum = 0; (t.sparesUsed||[]).forEach(su => { pSum += (parseFloat(su.price)||0) * (parseInt(su.qty)||1); });
+        const sub = pSum + labor; tax = Math.round(sub * 0.18); bill = sub + tax;
+      }
+      db.ref('tickets/' + tId).update({ status: 'Completed', bill, baseBill: labor, taxAmount: tax, techRemarks: rem, healthReport: hr });
+    }
+
+    // --- CUSTOMER PORTAL & AUTH ---
+    function checkAutoCustomerLogin() {
+      if (activeCustomerPhone) {
+        document.getElementById('custLoginSection').classList.add('hidden');
+        document.getElementById('custDashboardSection').classList.remove('hidden');
+        document.getElementById('custWelcomePhone').innerText = `Phone: ${activeCustomerPhone}`;
+        renderCustomerActiveTracker();
+        renderCustHistory();
+        renderCustomerAmcProducts();
+      }
+    }
+    function customerLoginAction() {
+      const ph = normalizePhone(document.getElementById('custLogPhone').value), pin = document.getElementById('custLogPin').value.trim();
+      if (!ph || ph.length < 10 || !pin) return alert("Fill Phone & PIN!");
+      if (!appDb.customers[ph]) db.ref('customers/' + ph).set(pin);
+      else if (appDb.customers[ph] !== pin) return alert("Wrong PIN!");
+      activeCustomerPhone = ph; localStorage.setItem('mc_logged_cust_phone_cloud', ph); checkAutoCustomerLogin();
+    }
+    function logoutCustomer() { activeCustomerPhone = null; localStorage.removeItem('mc_logged_cust_phone_cloud'); document.getElementById('custLoginSection').classList.remove('hidden'); document.getElementById('custDashboardSection').classList.add('hidden'); }
+
+    function openForgotPinModal() { document.getElementById('forgotPinModal').classList.remove('hidden'); }
+    function closeForgotPinModal() { document.getElementById('forgotPinModal').classList.add('hidden'); }
+    function requestCustRecoveryOtp() {
+      const ph = normalizePhone(document.getElementById('recCustPhone').value);
+      if (!ph || ph.length < 10) return alert("Enter valid 10-digit phone!");
+      tempCustResetPhone = ph; tempCustResetOtp = Math.floor(1000 + Math.random() * 9000).toString();
+      window.open(`https://wa.me/91${ph}?text=${encodeURIComponent("Mahendra's Creation: Your PIN Reset OTP is " + tempCustResetOtp)}`, '_blank');
+      showToastNotification(`Reset OTP: ${tempCustResetOtp}`, 'info');
+    }
+    function submitCustPinRecovery() {
+      const o = document.getElementById('recCustOtpInput').value.trim(), n = document.getElementById('recNewPin').value.trim(), c = document.getElementById('recConfirmPin').value.trim();
+      if (o !== tempCustResetOtp) return alert("Invalid OTP!");
+      if (!n || n.length < 4 || n !== c) return alert("PINs must match and be 4 digits!");
+      db.ref('customers/' + tempCustResetPhone).set(n).then(() => {
+        appDb.customers[tempCustResetPhone] = n; activeCustomerPhone = tempCustResetPhone;
+        localStorage.setItem('mc_logged_cust_phone_cloud', tempCustResetPhone);
+        closeForgotPinModal(); checkAutoCustomerLogin();
+      });
+    }
+
+    function openChangeCustPinModal() { document.getElementById('changeCustPinModal').classList.remove('hidden'); }
+    function closeChangeCustPinModal() { document.getElementById('changeCustPinModal').classList.add('hidden'); }
+    function saveNewCustomerPin() {
+      const o = document.getElementById('custOldPin').value.trim(), n = document.getElementById('custNewPin').value.trim(), c = document.getElementById('custConfirmPin').value.trim();
+      if (o !== appDb.customers[activeCustomerPhone]) return alert("Wrong Current PIN!");
+      if (!n || n.length < 4 || n !== c) return alert("New PINs must match and be 4 digits!");
+      db.ref('customers/' + activeCustomerPhone).set(n).then(() => { appDb.customers[activeCustomerPhone] = n; closeChangeCustPinModal(); showToastNotification("PIN Updated!", "success"); });
+    }
+
+    function onCustCallTypeChange() {
+      const ct = document.getElementById('custCallTypeSelect').value;
+      const b = document.getElementById('custProductSelectBox');
+      if (ct.includes('AMC') || ct.includes('CMC')) {
+        b.classList.remove('hidden');
+        const s = document.getElementById('custProductSelect'); s.innerHTML = '';
+        appDb.amcProducts.filter(p => normalizePhone(p.phone) === normalizePhone(activeCustomerPhone)).forEach(u => {
+          s.innerHTML += `<option value="${u.id}">${u.id} - ${u.brand} (${u.location})</option>`;
+        });
+      } else b.classList.add('hidden');
+    }
+
+    function bookCustComplaint() {
+      const name = document.getElementById('custName').value.trim(), addr = document.getElementById('custAddress').value.trim(), fault = document.getElementById('custFault').value.trim(), callType = document.getElementById('custCallTypeSelect').value;
+      if (!name || !addr || !fault) return alert("Fill Name, Address, and Fault!");
+      const tId = "MC-" + Date.now().toString().slice(-5);
+      const sOtp = Math.floor(1000 + Math.random() * 9000).toString(), cOtp = Math.floor(1000 + Math.random() * 9000).toString();
+      const pId = (callType.includes('AMC')||callType.includes('CMC')) ? (document.getElementById('custProductSelect')?.value || '') : '';
+      const newTkt = {
+        id: tId, timestamp: Date.now(), date: new Date().toLocaleDateString('en-IN'),
+        name, phone: activeCustomerPhone, address: addr, fault, callType, productId: pId,
+        techCode: "Unassigned", status: "Open", startOtp: sOtp, closeOtp: cOtp, bill: 0,
+        photos: [], sparesUsed: [], healthReport: null
+      };
+      db.ref('tickets/' + tId).set(newTkt);
+      document.getElementById('custFault').value = '';
+      showToastNotification(`Booked! Start OTP: ${sOtp} | Close: ${cOtp}`, 'success');
+    }
+
+    function renderCustomerActiveTracker() {
+      const box = document.getElementById('custActiveTrackerBox');
+      if (!box || !activeCustomerPhone) return;
+      const t = appDb.tickets.find(x => normalizePhone(x.phone) === normalizePhone(activeCustomerPhone));
+      if (!t) { box.classList.add('hidden'); return; }
+      box.classList.remove('hidden');
+      box.innerHTML = `
+        <div class="bg-white p-4 rounded-xl border space-y-2 shadow-sm">
+          <div class="flex justify-between items-center"><b class="text-blue-700 font-mono">${t.id}</b><span class="px-2 py-0.5 rounded font-bold text-xs ${t.status==='Completed'?'bg-emerald-100 text-emerald-800':'bg-blue-100 text-blue-800'}">${t.status}</span></div>
+          <div class="grid grid-cols-2 gap-2 text-center p-2 bg-slate-50 border rounded-lg">
+            <div><span class="text-[10px] text-gray-400 block">Start OTP</span><b class="text-sm font-mono text-blue-700">${t.startOtp}</b></div>
+            <div><span class="text-[10px] text-gray-400 block">Close OTP</span><b class="text-sm font-mono text-rose-700">${t.closeOtp}</b></div>
+          </div>
+          ${t.status === 'Completed' ? `<button onclick="openServiceReportModal('${t.id}')" class="w-full bg-emerald-600 text-white font-bold py-2 rounded-lg text-xs">View PDF Service Report</button>` : ''}
+        </div>
+      `;
+    }
+
+    function renderCustHistory() {
+      const box = document.getElementById('custHistoryRows');
+      if (!box || !activeCustomerPhone) return;
+      const list = appDb.tickets.filter(x => normalizePhone(x.phone) === normalizePhone(activeCustomerPhone));
+      box.innerHTML = list.length === 0 ? `<p class="text-gray-400 text-center py-2">No records found.</p>` : '';
+      list.forEach(c => {
+        box.innerHTML += `
+          <div class="p-2.5 border rounded-lg bg-slate-50 space-y-1">
+            <div class="flex justify-between font-bold"><span class="text-blue-700 font-mono">${c.id}</span><span>${c.status}</span></div>
+            <div>${c.fault} (${c.callType})</div>
+            <div class="flex justify-between text-gray-400 text-[10px] border-t pt-1"><span>${c.date}</span><b class="text-slate-800">₹${c.bill}</b></div>
+          </div>
+        `;
+      });
+    }
+
+    function renderCustomerAmcProducts() {
+      const sec = document.getElementById('custAmcProductsSection'), list = document.getElementById('custAmcProductList');
+      if (!sec || !list || !activeCustomerPhone) return;
+      const units = appDb.amcProducts.filter(p => normalizePhone(p.phone) === normalizePhone(activeCustomerPhone));
+      sec.classList.toggle('hidden', units.length === 0);
+      list.innerHTML = '';
+      units.forEach(u => {
+        list.innerHTML += `<div class="bg-white p-2 border rounded-lg flex justify-between items-center text-xs"><div><b>${u.id}</b> - ${u.brand} (${u.location})</div><button onclick="document.getElementById('custCallTypeSelect').value='AMC Service';onCustCallTypeChange();document.getElementById('custProductSelect').value='${u.id}';" class="bg-emerald-600 text-white px-2 py-1 rounded font-bold">Select</button></div>`;
+      });
+    }
+
+    // --- MASTERS & MODALS ---
+    function renderTechMasterTable() {
+      const b = document.getElementById('techMasterTableBody'); if (!b) return; b.innerHTML = '';
+      appDb.technicians.forEach(t => {
+        b.innerHTML += `<tr class="border-b"><td class="p-2 font-mono font-bold text-blue-700">${t.code}</td><td class="p-2 font-bold">${t.name}</td><td class="p-2">${t.phone||'-'}</td><td class="p-2">${t.joinDate||'-'}</td><td class="p-2">${t.address||'-'}</td><td class="p-2 text-center"><button onclick="if(confirm('Delete?'))db.ref('technicians/${t.code}').remove()" class="text-red-500 font-bold">&times;</button></td></tr>`;
+      });
+    }
+    function toggleTechAddForm() { document.getElementById('techAddFormBox').classList.toggle('hidden'); }
+    function saveNewTechnician() {
+      const name = document.getElementById('techAddName').value.trim(), code = normalizeCode(document.getElementById('techAddCode').value), pin = document.getElementById('techAddPin').value.trim();
+      if (!name || !code || !pin) return alert("Fill Name, Code, and PIN!");
+      db.ref('technicians/' + code).set({ code, name, pin, phone: normalizePhone(document.getElementById('techAddPhone').value), joinDate: document.getElementById('techAddJoinDate').value, address: document.getElementById('techAddAddress').value.trim() });
+      toggleTechAddForm();
+    }
+    function populateTechDropdowns() {
+      const f = document.getElementById('filterTech'), d = document.getElementById('dirAssignTech');
+      if (f) { f.innerHTML = '<option value="ALL">All Techs</option>'; appDb.technicians.forEach(t => f.innerHTML += `<option value="${t.code}">${t.name} (${t.code})</option>`); }
+      if (d) { d.innerHTML = '<option value="Unassigned">Unassigned</option>'; appDb.technicians.forEach(t => d.innerHTML += `<option value="${t.code}">${t.name} (${t.code})</option>`); }
+    }
+
+    function renderAdminSparesTable() {
+      const b = document.getElementById('sparesMasterTableBody'); if (!b) return; b.innerHTML = '';
+      appDb.spareParts.forEach(s => {
+        b.innerHTML += `<tr class="border-b"><td class="p-2 font-bold">${s.name}</td><td class="p-2">1</td><td class="p-2">₹${s.price}</td><td class="p-2">${s.tax}%</td><td class="p-2 font-bold">₹${(s.price * (1 + s.tax/100)).toFixed(0)}</td><td class="p-2 text-center"><button onclick="if(confirm('Delete?'))db.ref('spareParts/${s.id}').remove()" class="text-red-500 font-bold">&times;</button></td></tr>`;
+      });
+    }
+    function toggleSpareAddForm() { document.getElementById('spareAddFormBox').classList.toggle('hidden'); }
+    function saveNewSparePart() {
+      const name = document.getElementById('spareNewName').value.trim(), price = parseFloat(document.getElementById('spareNewPrice').value), tax = parseFloat(document.getElementById('spareNewTax').value)||18;
+      if (!name || isNaN(price)) return alert("Fill Name and Price!");
+      const id = "SP-" + Date.now().toString().slice(-4);
+      db.ref('spareParts/' + id).set({ id, name, price, tax });
+      toggleSpareAddForm();
+    }
+
+    function toggleAddAmcProductModal() { document.getElementById('amcProductModal').classList.toggle('hidden'); }
+    function saveAmcProduct() {
+      const custName = document.getElementById('amcProdCustName').value.trim(), phone = normalizePhone(document.getElementById('amcProdPhone').value);
+      if (!custName || phone.length < 10) return alert("Fill Name & Phone!");
+      const id = "MC-PRD-" + Date.now().toString().slice(-4);
+      const qrScanUrl = `${window.location.href.split('#')[0].split('?')[0]}?prodId=${id}&phone=${phone}#customer`;
+      db.ref('amcProducts/' + id).set({
+        id, custName, phone, contractType: document.getElementById('amcProdType').value,
+        acType: document.getElementById('amcProdAcType').value.trim(), brand: document.getElementById('amcProdBrand').value.trim(),
+        location: document.getElementById('amcProdLocation').value.trim(), qrScanUrl
+      });
+      toggleAddAmcProductModal();
+    }
+    function renderAmcProductsTable() {
+      const b = document.getElementById('amcProductsTableBody'); if (!b) return; b.innerHTML = '';
+      appDb.amcProducts.forEach(p => {
+        b.innerHTML += `<tr class="border-b"><td class="p-2 font-mono font-bold text-blue-700">${p.id}</td><td class="p-2 font-bold">${p.custName}</td><td class="p-2">${p.phone}</td><td class="p-2">${p.contractType}</td><td class="p-2">${p.brand}</td><td class="p-2">${p.location}</td><td class="p-2 text-center"><button onclick="showAmcProductQrModal('${p.id}')" class="bg-slate-900 text-white px-2 py-0.5 rounded text-[10px]">QR</button></td><td class="p-2 text-center"><button onclick="if(confirm('Delete?'))db.ref('amcProducts/${p.id}').remove()" class="text-red-500 font-bold">&times;</button></td></tr>`;
+      });
+    }
+    function showAmcProductQrModal(id) {
+      const p = appDb.amcProducts.find(x => x.id === id); if (!p) return;
+      document.getElementById('qrModalProdTitle').innerText = p.id; document.getElementById('qrModalCustName').innerText = p.custName; document.getElementById('qrModalUnit').innerText = `${p.brand} (${p.location})`;
+      const qb = document.getElementById('productQrBoxLarge'); qb.innerHTML = '';
+      new QRCode(qb, { text: p.qrScanUrl, width: 140, height: 140 });
+      document.getElementById('printableQrModal').classList.remove('hidden');
+    }
+    function closeQrModal() { document.getElementById('printableQrModal').classList.add('hidden'); }
+
+    function openServiceReportModal(tId) {
+      const t = appDb.tickets.find(x => x.id === tId); if (!t) return;
+      document.getElementById('repTicketId').innerText = t.id; document.getElementById('repDate').innerText = t.date;
+      document.getElementById('repCustName').innerText = t.name; document.getElementById('repCustPhone').innerText = t.phone;
+      document.getElementById('repAddress').innerText = t.address; document.getElementById('repFault').innerText = t.fault;
+      document.getElementById('repCallType').innerText = t.callType; document.getElementById('repTechName').innerText = t.techCode;
+      document.getElementById('repProdId').innerText = t.productId || '-'; document.getElementById('repFinalBill').innerText = `₹${t.bill}`;
+      const spSec = document.getElementById('repSparesSection'), spList = document.getElementById('repSparesList');
+      if (t.sparesUsed && t.sparesUsed.length) {
+        spSec.classList.remove('hidden');
+        spList.innerHTML = t.sparesUsed.map(s => `<div class="flex justify-between"><span>• ${s.name} (Qty: ${s.qty})</span><b>₹${(s.price * s.qty)}</b></div>`).join('');
+      } else spSec.classList.add('hidden');
+      if (t.healthReport) {
+        document.getElementById('repTempBefore').innerText = `${t.healthReport.tempBefore}°C`; document.getElementById('repTempAfter').innerText = `${t.healthReport.tempAfter}°C`;
+        document.getElementById('repGasPsi').innerText = `${t.healthReport.gasPsi} PSI`; document.getElementById('repAmps').innerText = `${t.healthReport.amps} A`;
+      }
+      document.getElementById('serviceReportModal').classList.remove('hidden');
+    }
+    function closeReportModal() { document.getElementById('serviceReportModal').classList.add('hidden'); }
+
+    function openAdminBookingModal() { document.getElementById('adminDirectModal').classList.remove('hidden'); }
+    function closeAdminDirectModal() { document.getElementById('adminDirectModal').classList.add('hidden'); }
+    function saveAdminDirectTicket() {
+      const name = document.getElementById('dirCustName').value.trim(), phone = normalizePhone(document.getElementById('dirCustPhone').value);
+      if (!name || phone.length < 10) return alert("Fill Name & 10-digit Phone!");
+      const tId = "MC-" + Date.now().toString().slice(-5);
+      const tc = document.getElementById('dirAssignTech').value;
+      db.ref('tickets/' + tId).set({
+        id: tId, timestamp: Date.now(), date: new Date().toLocaleDateString('en-IN'),
+        name, phone, address: document.getElementById('dirCustAddress').value.trim(),
+        fault: document.getElementById('dirCustFault').value.trim(), callType: document.getElementById('dirCallTypeSelect').value,
+        techCode: tc, status: (tc==='Unassigned'?'Open':'Assigned'),
+        startOtp: Math.floor(1000 + Math.random() * 9000).toString(), closeOtp: Math.floor(1000 + Math.random() * 9000).toString(),
+        bill: 0, photos: [], sparesUsed: [], healthReport: null
+      });
+      closeAdminDirectModal();
+    }
+
+    function exportFilteredExcel() {
+      if (appDb.tickets.length === 0) return alert("No records!");
+      const data = appDb.tickets.map(t => ({ "Ticket ID": t.id, "Date": t.date, "Customer": t.name, "Phone": t.phone, "Address": t.address, "Type": t.callType, "Product ID": t.productId||'N/A', "Fault": t.fault, "Tech": t.techCode, "Status": t.status, "Bill": t.bill }));
+      const ws = XLSX.utils.json_to_sheet(data), wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Audits");
+      XLSX.writeFile(wb, "HVAC_Clients_Report.xlsx");
+    }
+  </script>
+</body>
+</html>
